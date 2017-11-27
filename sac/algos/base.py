@@ -67,6 +67,14 @@ class RLAlgorithm(Algorithm):
         self._pool = None
 
     def _train(self, env, policy, pool):
+        """Perform RL training.
+
+        Args:
+            env (`rllab.Env`): Environment used for training
+            policy (`Policy`): Policy used for training
+            pool (`PoolBase`): Sample pool to add samples to
+        """
+
         self._init_training(env, policy, pool)
 
         with self._sess.as_default():
