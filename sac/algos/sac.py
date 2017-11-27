@@ -9,6 +9,7 @@ from .base import RLAlgorithm
 
 EPS = 1E-6
 
+EPS = 1E-6
 
 class SAC(RLAlgorithm, Serializable):
     """Soft Actor-Critic (SAC)
