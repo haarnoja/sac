@@ -4,6 +4,7 @@ import joblib
 import tensorflow as tf
 
 from rllab.sampler.utils import rollout
+from sac.misc.visualization import visitation_plot
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -31,11 +32,16 @@ def simulate_policy(args):
             policy = data['policy']
             env = data['env']
 
-        with policy.deterministic(args.deterministic):
-            while True:
+        paths = []
+        for h in range(policy._K):
+            with policy.fix_h(h):
                 path = rollout(env, policy,
                                max_path_length=args.max_path_length,
-                               animated=True, speedup=args.speedup)
+                               animated=False, speedup=args.speedup)
+                paths.append(path)
+
+        visitation_plot(paths)
+
 if __name__ == "__main__":
     args = parse_args()
     simulate_policy(args)
