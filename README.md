@@ -106,6 +106,15 @@ python ./examples/mujoco_all_sac.py --env=swimmer --log_dir="/root/softqlearning
 python ./scripts/sim_policy.py /root/softqlearning-private/data/swimmer-experiment/itr_<iteration>.pkl
 ```
 
+`mujoco_all_sac.py` contains several different environments and there are more example scripts available in the  `/examples` folder. For more information about the agents and configurations, run the scripts with `--help` flag. For example:
+```
+python ./examples/mujoco_all_sac.py --help
+usage: mujoco_all_sac.py [-h]
+                         [--env {ant,walker,swimmer,half-cheetah,humanoid,hopper}]
+                         [--exp_name EXP_NAME] [--mode MODE]
+                         [--log_dir LOG_DIR]
+```
+
 # Credits
 The soft actor-critic algorithm was developed by Tuomas Haarnoja under the supervision of [Prof. Sergey Levine](https://people.eecs.berkeley.edu/~svlevine/) and [Prof. Pieter Abbeel](https://people.eecs.berkeley.edu/~pabbeel/) at UC Berkeley. Special thanks to [Vitchyr Pong](https://github.com/vitchyr), who wrote some parts of the code, and [Kristian Hartikainen](https://github.com/hartikainen) who helped testing and documenting the code. The work was supported by [Berkeley Deep Drive](https://deepdrive.berkeley.edu/).
 
