@@ -71,17 +71,16 @@ rm -rf /tmp/mujoco_tmp
 cp <mujoco_key_folder>/mjkey.txt <installation_path_of_your_choice>/rllab/vendor/mujoco
 ```
 
-TODO.before_release: change to public url and change `softqlearning-private` folder name to match
-4. Clone softqlearning
+4. Clone sac
 ```
 cd <installation_path_of_your_choice>
-git clone https://github.com/haarnoja/softqlearning-private.git
-cd softqlearning-private
+git clone https://github.com/haarnoja/sac.git
+cd sac
 ```
 
 5. Create and activate conda environment
 ```
-cd softqlearning-private # TODO.before_release: update folder name
+cd sac # TODO.before_release: update folder name
 conda env create -f environment.yml
 source activate sac
 ```
@@ -98,12 +97,12 @@ conda remove --name sac --all
 ### Training and simulating an agent
 1. To train the agent
 ```
-python ./examples/mujoco_all_sac.py --env=swimmer --log_dir="/root/softqlearning-private/data/swimmer-experiment"
+python ./examples/mujoco_all_sac.py --env=swimmer --log_dir="/root/sac/data/swimmer-experiment"
 ```
 
 2. To simulate the agent (*NOTE*: This step currently fails with the Docker installation, due to missing display.)
 ```
-python ./scripts/sim_policy.py /root/softqlearning-private/data/swimmer-experiment/itr_<iteration>.pkl
+python ./scripts/sim_policy.py /root/sac/data/swimmer-experiment/itr_<iteration>.pkl
 ```
 
 `mujoco_all_sac.py` contains several different environments and there are more example scripts available in the  `/examples` folder. For more information about the agents and configurations, run the scripts with `--help` flag. For example:
