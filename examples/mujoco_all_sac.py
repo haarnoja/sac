@@ -11,6 +11,24 @@ from sac.policies.gmm import GMMPolicy
 from sac.replay_buffers import SimpleReplayBuffer
 from sac.value_functions import NNQFunction, NNVFunction
 
+
+COMMON_PARAMS = {
+    "seed": [1, 2, 3],
+    "lr": 3E-4,
+    "discount": 0.99,
+    "tau": 0.01,
+    "K": 4,
+    "layer_size": 128,
+    "batch_size": 128,
+    "max_pool_size": 1E6,
+    "n_train_repeat": 1,
+    "epoch_length": 1000,
+    "snapshot_mode": 'gap',
+    "snapshot_gap": 100,
+    "sync_pkl": True,
+}
+
+
 ENV_PARAMS = {
     'swimmer': { # 2 DoF
         'prefix': 'swimmer',
