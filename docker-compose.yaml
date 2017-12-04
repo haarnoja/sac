@@ -7,7 +7,7 @@ services:
     container_name: soft-actor-critic
     entrypoint: tail -f /dev/null
     volumes:
-      - .:/root/softqlearning-private
+      - .:/root/sac
       - ${MUJOCO_LICENSE_PATH:-./.mujoco/mjkey.txt}:/root/rllab/vendor/mujoco/mjkey.txt
     environment:
       THEANO_FLAGS: mode=FAST_RUN,device=cpu,floatX=float32
