@@ -1,5 +1,5 @@
 # Soft Actor-Critic
-Soft actor-critic is a deep reinforcement learning framework for training maximum entropy policies in continous domains. [TODO.before_release: paper reference]
+Soft actor-critic is a deep reinforcement learning framework for training maximum entropy policies in continous domains. The algorithm is based on the paper [Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor](https://drive.google.com/file/d/0Bxz3x8U2LH_2QllDZVlUQ1BJVEJHeER2YU5mODNaeFZmc3dz/view) presented at the [Deep Reinforcement Learning Symposium](https://sites.google.com/view/deeprl-symposium-nips2017/), NIPS 2017.
 
 # Getting Started
 
@@ -42,7 +42,7 @@ docker-compose down
 
 ## Local installation
 
-To get the environment installed correctly, you will first need to clone rllab [rllab](https://github.com/rll/rllab), and have its path added to your PYTHONPATH environment variable.
+To get the environment installed correctly, you will first need to clone [rllab](https://github.com/rll/rllab), and have its path added to your PYTHONPATH environment variable.
 
 1. Clone rllab
 ```
@@ -115,7 +115,13 @@ usage: mujoco_all_sac.py [-h]
 ```
 
 # Credits
-The soft actor-critic algorithm was developed by Tuomas Haarnoja under the supervision of [Prof. Sergey Levine](https://people.eecs.berkeley.edu/~svlevine/) and [Prof. Pieter Abbeel](https://people.eecs.berkeley.edu/~pabbeel/) at UC Berkeley. Special thanks to [Vitchyr Pong](https://github.com/vitchyr), who wrote some parts of the code, and [Kristian Hartikainen](https://github.com/hartikainen) who helped testing and documenting the code. The work was supported by [Berkeley Deep Drive](https://deepdrive.berkeley.edu/).
+The soft actor-critic algorithm was developed by Tuomas Haarnoja under the supervision of Prof. [Sergey Levine](https://people.eecs.berkeley.edu/~svlevine/) and Prof. [Pieter Abbeel](https://people.eecs.berkeley.edu/~pabbeel/) at UC Berkeley. Special thanks to [Vitchyr Pong](https://github.com/vitchyr), who wrote some parts of the code, and [Kristian Hartikainen](https://github.com/hartikainen) who helped testing, documenting, and polishing the code and streamlining the installation process. The work was supported by [Berkeley Deep Drive](https://deepdrive.berkeley.edu/).
 
 # Reference
-TODO.before_release
+@article{haarnoja2017soft,
+  title={Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor},
+  author={Haarnoja, Tuomas and Zhou, Aurick and Abbeel, Pieter and Levine, Sergey},
+  booktitle={Deep Reinforcement Learning Symposium},
+  year={2017}
+}
+
