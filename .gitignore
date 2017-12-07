@@ -1,0 +1,13 @@
+*__pycache__*
+*.pyc
+*.swp
+.idea
+*.mp4
+data
+vendor/*
+rllab
+rllab/config_personal.py
+rllab/ec2_info.py
+gym
+*.TXT
+*.pkl

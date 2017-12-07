@@ -1,0 +1,14 @@
+version: "3"
+services:
+  sac:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: soft-actor-critic
+    entrypoint: tail -f /dev/null
+    volumes:
+      - .:/root/sac
+      - ${MUJOCO_LICENSE_PATH:-./.mujoco/mjkey.txt}:/root/rllab/vendor/mujoco/mjkey.txt
+    environment:
+      THEANO_FLAGS: mode=FAST_RUN,device=cpu,floatX=float32
+      MUJOCO_PY_MJKEY_PATH: /root/rllab/vendor/mujoco/mjkey.txt
