@@ -103,6 +103,7 @@ class SAC(RLAlgorithm, Serializable):
                 visualizing Q-function during training.
 
             lr (`float`): Learning rate used for the function approximators.
+            scale_reward (`float`): Scaling factor for raw reward.
             discount (`float`): Discount factor for Q-function updates.
             tau (`float`): Soft value function target update weight.
 
