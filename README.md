@@ -80,7 +80,7 @@ cd sac
 
 5. Create and activate conda environment
 ```
-cd sac # TODO.before_release: update folder name
+cd sac
 conda env create -f environment.yml
 source activate sac
 ```

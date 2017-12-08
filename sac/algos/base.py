@@ -43,7 +43,6 @@ class RLAlgorithm(Algorithm):
             max_path_length (`int`): Number of timesteps before resetting
                 environment and policy, and the number of paths used for
                 evaluation rollout.
-            scale_reward (`float`): Scaling factor for raw reward.
             eval_n_episodes (`int`): Number of rollouts to evaluate.
             eval_deterministic (`int`): Whether or not to run the policy in
                 deterministic mode when evaluating policy.
