@@ -5,9 +5,9 @@ from rllab.core.serializable import Serializable
 from rllab.misc import logger
 from rllab.misc.overrides import overrides
 
-from sac.algos.base import RLAlgorithm
+from .base import RLAlgorithm
 
-EPS = 1E-6
+EPS = 1e-6
 
 class SAC(RLAlgorithm, Serializable):
     """Soft Actor-Critic (SAC)
@@ -55,7 +55,7 @@ class SAC(RLAlgorithm, Serializable):
 
         lr=3E-4,
         discount=0.99,
-        tau=0.99,
+        tau=0.01,
 
         save_full_state=False
     )
@@ -65,7 +65,9 @@ class SAC(RLAlgorithm, Serializable):
 
     References
     ----------
-    [1] TODO: SAC paper
+    [1] Tuomas Haarnoja, Aurick Zhou, Pieter Abbeel, and Sergey Levine, "Soft
+        Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning
+        with a Stochastic Actor," Deep Learning Symposium, NIPS 2017.
     """
 
     def __init__(
@@ -80,8 +82,9 @@ class SAC(RLAlgorithm, Serializable):
             plotter=None,
 
             lr=3E-3,
+            scale_reward=1,
             discount=0.99,
-            tau=0,
+            tau=0.01,
 
             save_full_state=False,
     ):
@@ -119,7 +122,7 @@ class SAC(RLAlgorithm, Serializable):
         self._policy_lr = lr
         self._qf_lr = lr
         self._vf_lr = lr
-
+        self._scale_reward = scale_reward
         self._discount = discount
         self._tau = tau
 
@@ -190,7 +193,7 @@ class SAC(RLAlgorithm, Serializable):
         critic Q-function with gradient descent, and appends it to
         `self._training_ops` attribute.
 
-        See Equation (10) in [TODO: SAC paper], for further information of the
+        See Equation (10) in [1], for further information of the
         Q-function update rule.
         """
 
@@ -202,7 +205,7 @@ class SAC(RLAlgorithm, Serializable):
             self._vf_target_params = self._vf.get_params_internal()
 
         ys = tf.stop_gradient(
-            self._reward_pl +
+            self._scale_reward * self._reward_pl +
             (1 - self._terminal_pl) * self._discount * vf_next_target_t
         )  # N
 
@@ -227,7 +230,7 @@ class SAC(RLAlgorithm, Serializable):
         policy. However, in practice, the separate function approximator
         stabilizes training.
 
-        See Equations (8, 13) in [TODO: SAC paper], for further information
+        See Equations (8, 13) in [1], for further information
         of the value function and policy function update rules.
         """
 
@@ -266,13 +269,13 @@ class SAC(RLAlgorithm, Serializable):
         return tf.reduce_sum(tf.log(1 - tf.tanh(t) ** 2 + EPS), axis=1)
 
     def _init_target_ops(self):
-        """Create tensorflow operations for updating value function."""
+        """Create tensorflow operations for updating target value function."""
 
         source_params = self._vf_params
         target_params = self._vf_target_params
 
         self._target_ops = [
-            tf.assign(target, self._tau * target + (1 - self._tau) * source)
+            tf.assign(target, (1 - self._tau) * target + self._tau * source)
             for target, source in zip(target_params, source_params)
         ]
 

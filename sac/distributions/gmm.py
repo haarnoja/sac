@@ -6,7 +6,6 @@ import numpy as np
 from sac.misc.mlp import mlp
 
 LOG_SIG_CAP_MAX = 2
-LOG_SIG_CAP_MIN = -20
 
 
 class GMM(object):
@@ -14,13 +13,13 @@ class GMM(object):
             self,
             K,
             Dx,
-            hidden_layers=(100, 100),
+            hidden_layers_sizes=(100, 100),
             reg=0.001,
             cond_t_lst=(),
     ):
         self._cond_t_lst = cond_t_lst
         self._reg = reg
-        self._layer_sizes = list(hidden_layers) + [K*(2*Dx + 1)]
+        self._layer_sizes = list(hidden_layers_sizes) + [K * (2 * Dx + 1)]
 
         self._Dx = Dx
         self._K = K
@@ -73,8 +72,7 @@ class GMM(object):
         mu_t = w_and_mu_and_logsig_t[..., 1:1+Dx]
         log_sig_t = w_and_mu_and_logsig_t[..., 1+Dx:]
 
-        log_sig_t = tf.clip_by_value(
-            log_sig_t, LOG_SIG_CAP_MIN, LOG_SIG_CAP_MAX)
+        log_sig_t = tf.minimum(log_sig_t, LOG_SIG_CAP_MAX)
 
         return log_w_t, mu_t, log_sig_t
 

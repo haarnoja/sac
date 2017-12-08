@@ -26,7 +26,6 @@ class RLAlgorithm(Algorithm):
             epoch_length=1000,
             min_pool_size=10000,
             max_path_length=1000,
-            scale_reward=1.,
             eval_n_episodes=10,
             eval_deterministic=True,
             eval_render=False,
@@ -57,7 +56,6 @@ class RLAlgorithm(Algorithm):
         self._epoch_length = epoch_length
         self._min_pool_size = min_pool_size
         self._max_path_length = max_path_length
-        self._scale_reward = scale_reward
 
         self._eval_n_episodes = eval_n_episodes
         self._eval_deterministic = eval_deterministic
@@ -83,6 +81,7 @@ class RLAlgorithm(Algorithm):
         with self._sess.as_default():
             observation = env.reset()
             policy.reset()
+
             path_length = 0
             path_return = 0
             last_path_return = 0
@@ -92,30 +91,27 @@ class RLAlgorithm(Algorithm):
             gt.reset()
             gt.set_def_unique(False)
 
-            for epoch in gt.timed_for(range(self._n_epochs), save_itrs=True):
+            for epoch in gt.timed_for(range(self._n_epochs + 1),
+                                      save_itrs=True):
                 logger.push_prefix('Epoch #%d | ' % epoch)
 
                 for t in range(self._epoch_length):
                     iteration = t + epoch * self._epoch_length
-                    action, _ = policy.get_action(observation)
-                    next_ob, raw_reward, terminal, info = env.step(action)
-                    reward = raw_reward * self._scale_reward
-                    path_length += 1
-                    path_return += raw_reward
 
-                    if not terminal:
-                        self._pool.add_sample(
-                            observation, action, reward, terminal, False)
+                    action, _ = policy.get_action(observation)
+                    next_ob, reward, terminal, info = env.step(action)
+                    path_length += 1
+                    path_return += reward
+
+                    self._pool.add_sample(
+                        observation,
+                        action,
+                        reward,
+                        terminal,
+                        next_ob,
+                    )
 
                     if terminal or path_length >= self._max_path_length:
-                        self._pool.add_sample(
-                            next_ob,
-                            np.zeros_like(action),
-                            0,
-                            np.zeros_like(terminal),
-                            True
-                        )
-
                         observation = env.reset()
                         policy.reset()
                         path_length = 0
@@ -142,13 +138,13 @@ class RLAlgorithm(Algorithm):
                 logger.save_itr_params(epoch, params)
                 times_itrs = gt.get_times().stamps.itrs
 
-                eval_time = times_itrs['eval'][-1] if epoch > 0 else 0
+                eval_time = times_itrs['eval'][-1] if epoch > 1 else 0
                 total_time = gt.get_times().total
                 logger.record_tabular('time-train', times_itrs['train'][-1])
                 logger.record_tabular('time-eval', eval_time)
                 logger.record_tabular('time-sample', times_itrs['sample'][-1])
                 logger.record_tabular('time-total', total_time)
-                logger.record_tabular('epochs', epoch)
+                logger.record_tabular('epoch', epoch)
                 logger.record_tabular('episodes', n_episodes)
                 logger.record_tabular('max-path-return', max_path_return)
                 logger.record_tabular('last-path-return', last_path_return)
@@ -179,7 +175,6 @@ class RLAlgorithm(Algorithm):
         total_returns = [path['rewards'].sum() for path in paths]
         episode_lengths = [len(p['rewards']) for p in paths]
 
-        logger.record_tabular('epoch', epoch)
         logger.record_tabular('return-average', np.mean(total_returns))
         logger.record_tabular('return-min', np.min(total_returns))
         logger.record_tabular('return-max', np.max(total_returns))
@@ -218,7 +213,8 @@ class RLAlgorithm(Algorithm):
         """
 
         self._env = env
-        self._eval_env = deep_clone(env)
+        if self._eval_n_episodes > 0:
+            self._eval_env = deep_clone(env)
         self._policy = policy
         self._pool = pool
 

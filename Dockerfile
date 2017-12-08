@@ -5,6 +5,7 @@ FROM ubuntu:16.04
 RUN apt-get update --fix-missing && apt-get install -y wget bzip2 ca-certificates \
     libglib2.0-0 libxext6 libsm6 libxrender1 \
     git mercurial subversion
+
 RUN echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
     wget  --no-check-certificate --quiet https://repo.continuum.io/archive/Anaconda2-2.5.0-Linux-x86_64.sh && \
     /bin/bash /Anaconda2-2.5.0-Linux-x86_64.sh -b -p /opt/conda && \
@@ -42,22 +43,45 @@ RUN pip install Pillow
 # ========== OpenAI Gym ==========
 RUN apt-get -y install libgtk2.0-0
 RUN pip install gym
-#RUN apt-get -y install ffmpeg
+# RUN apt-get -y install ffmpeg
 RUN apt-get -y install libav-tools
 CMD alias ffmpeg="avconv"
 
 # ========== Add codebase stub ==========
-CMD mkdir /root/code
-ADD environment.yml /root/code/environment.yml
-RUN conda env create -f /root/code/environment.yml
+WORKDIR /root/sac
 
-ENV PYTHONPATH /root/code/rllab:$PYTHONPATH
-ENV PATH /opt/conda/envs/rllab3/bin:$PATH
-RUN echo "source activate rllab3" >> /root/.bashrc
+ADD environment.yml /root/sac/environment.yml
+RUN conda env create -f /root/sac/environment.yml \
+    && conda env update
+
+ENV PYTHONPATH /root/sac:$PYTHONPATH
+ENV PATH /opt/conda/envs/sac/bin:$PATH
+RUN echo "source activate sac" >> /root/.bashrc
 ENV BASH_ENV /root/.bashrc
-WORKDIR /root/code
 
-# gpu theanno
-ENV THEANO_FLAGS mode=FAST_RUN,device=gpu,floatX=float32
+# ========= rllab ===============
+# We need to clone rllab repo in order to use the
+# `rllab.sandbox.rocky.tf` functions.
 
+ENV RLLAB_PATH=/root/rllab \
+    RLLAB_VERSION=b3a28992eca103cab3cb58363dd7a4bb07f250a0
 
+RUN git clone https://github.com/rll/rllab.git ${RLLAB_PATH} \
+    && cd ${RLLAB_PATH} \
+    && git checkout ${RLLAB_VERSION} \
+    && mkdir ${RLLAB_PATH}/vendor/mujoco \
+    && python -m rllab.config
+
+ENV PYTHONPATH ${RLLAB_PATH}:${PYTHONPATH}
+
+# ========= mujoco ===============
+ENV MUJOCO_VERSION=1.3.1 \
+    MUJOCO_PATH=/root/.mujoco
+
+RUN MUJOCO_ZIP="mjpro$(echo ${MUJOCO_VERSION} | sed -e "s/\.//g")_linux.zip" \
+    && mkdir -p ${MUJOCO_PATH} \
+    && wget -P ${MUJOCO_PATH} https://www.roboti.us/download/${MUJOCO_ZIP} \
+    && unzip ${MUJOCO_PATH}/${MUJOCO_ZIP} -d ${MUJOCO_PATH} \
+    && cp ${MUJOCO_PATH}/mjpro131/bin/libmujoco131.so ${RLLAB_PATH}/vendor/mujoco/ \
+    && cp ${MUJOCO_PATH}/mjpro131/bin/libglfw.so.3 ${RLLAB_PATH}/vendor/mujoco/ \
+    && rm ${MUJOCO_PATH}/${MUJOCO_ZIP}
