@@ -92,6 +92,15 @@ class CouplingBijector(ConditionalBijector):
 
     # TODO: Properties
 
+    def get_mask(self, x, dtype):
+        shape = x.get_shape()
+        mask = checkerboard(shape[1:], parity=self.parity, dtype=dtype)
+
+        # TODO: remove assert
+        assert mask.get_shape() == shape[1:]
+
+        return mask
+
     def _forward(self, x, **condition_kwargs):
         """TODO"""
         pass
