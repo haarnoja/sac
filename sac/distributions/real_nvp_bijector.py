@@ -55,94 +55,70 @@ def feedforward_net(inputs,
 
     return out
 
-class CouplingLayer(object):
-    def __init__(self, parity, name, translation_fn, scale_fn):
+class CouplingBijector(ConditionalBijector):
+    """TODO"""
+
+    def __init__(self,
+                 parity,
+                 translation_fn,
+                 scale_fn,
+                 event_ndims=0,
+                 validate_args=False,
+                 name="coupling_bijector"):
+        """Instantiates the `CouplingBijector` bijector.
+
+        Args:
+            TODO
+            event_ndims: Python scalar indicating the number of dimensions associated
+                with a particular draw from the distribution.
+            validate_args: Python `bool` indicating whether arguments should be
+                checked for correctness.
+            name: Python `str` name given to ops managed by this object.
+
+        Raises:
+            ValueError: if TODO happens
+        """
+        self._graph_parents = []
+        self._name = name
+        self._validate_args = validate_args
+
         self.parity = parity
-        self.name = name
         self.translation_fn = translation_fn
         self.scale_fn = scale_fn
 
-    def get_mask(self, x, dtype):
-        shape = x.get_shape()
-        mask = checkerboard(shape[1:], parity=self.parity, dtype=dtype)
+        super().__init__(event_ndims=event_ndims,
+                         validate_args=validate_args,
+                         name=name)
 
-        # TODO: remove assert
-        assert mask.get_shape() == shape[1:]
+    # TODO: Properties
 
-        return mask
+    def _forward(self, x, **condition_kwargs):
+        """TODO"""
+        pass
 
-    def forward_and_jacobian(self, inputs, observations):
-        with tf.variable_scope(self.name):
-            shape = inputs.get_shape()
-            mask = self.get_mask(inputs, dtype=inputs.dtype)
+    def _forward_log_det_jacobian(self, x, **condition_kwargs):
+        """TODO"""
+        pass
 
-            # masked half of inputs
-            masked_inputs = inputs * mask
+    def _inverse(self, y, **condition_kwargs):
+        """TODO"""
+        pass
 
-            # TODO: scale and translation could be merged into a single network
-            with tf.variable_scope("scale", reuse=tf.AUTO_REUSE):
-                scale = mask * self.scale_fn(masked_inputs, observations)
+    def _inverse_log_det_jacobian(self, y, **condition_kwargs):
+        """TODO"""
+        pass
 
-            with tf.variable_scope("translation", reuse=tf.AUTO_REUSE):
-                translation = mask * self.translation_fn(
-                    masked_inputs, observations)
+    def _maybe_assert_valid_x(self, x):
+        """TODO"""
+        if not self.validate_args:
+            return x
+        raise NotImplementedError("_maybe_assert_valid_y")
 
-            # TODO: check the masks
-            exp_scale = tf.check_numerics(
-                tf.exp(scale), "tf.exp(scale) contains NaNs or Infs.")
-            # (9) in paper
-
-            if self.parity == "odd":
-                outputs = tf.stack((
-                    inputs[:, 0] * exp_scale[:, 1] + translation[:, 1],
-                    inputs[:, 1],
-                ), axis=1)
-            else:
-                outputs = tf.stack((
-                    inputs[:, 0],
-                    inputs[:, 1] * exp_scale[:, 0] + translation[:, 0],
-                ), axis=1)
-
-            log_det_jacobian = tf.reduce_sum(
-                scale, axis=tuple(range(1, len(shape))))
-
-            return outputs, log_det_jacobian
-
-    def backward_and_jacobian(self, inputs, observations):
-        """Calculate inverse of the layer
-
-        Note that `inputs` correspond to the `outputs` in forward function
-        """
-        with tf.variable_scope(self.name):
-            shape = inputs.get_shape()
-            mask = self.get_mask(inputs, dtype=inputs.dtype)
-
-            masked_inputs = inputs * mask
-
-            # TODO: scale and translation could be merged into a single network
-            with tf.variable_scope("scale", reuse=tf.AUTO_REUSE):
-                scale = mask * self.scale_fn(masked_inputs, observations)
-
-            with tf.variable_scope("translation", reuse=tf.AUTO_REUSE):
-                translation = mask * self.translation_fn(
-                    masked_inputs, observations)
-
-            if self.parity == "odd":
-                outputs = tf.stack((
-                    (inputs[:, 0] - translation[:, 1]) * tf.exp(-scale[:, 1]),
-                    inputs[:, 1],
-                ), axis=1)
-            else:
-                outputs = tf.stack((
-                    inputs[:, 0],
-                    (inputs[:, 1] - translation[:, 0]) * tf.exp(-scale[:, 0]),
-                ), axis=1)
-
-            # TODO: Should this be - or +?
-            log_det_jacobian = tf.reduce_sum(
-                -scale, axis=tuple(range(1, len(shape))))
-
-            return outputs, log_det_jacobian
+    def _maybe_assert_valid_y(self, y):
+        """TODO"""
+        if not self.validate_args:
+            return y
+        raise NotImplementedError("_maybe_assert_valid_y")
 
 
 DEFAULT_CONFIG = {
@@ -207,7 +183,7 @@ class RealNVPBijector(ConditionalBijector):
                     self.config["scale_regularization"]))
 
         self.layers = [
-            CouplingLayer(
+            CouplingBijector(
                 parity=("even", "odd")[i % 2],
                 name="coupling_{i}".format(i=i),
                 translation_fn=translation_wrapper,
@@ -221,7 +197,7 @@ class RealNVPBijector(ConditionalBijector):
 
         out = x
         for layer in self.layers:
-            out, _ = layer.forward_and_jacobian(out, observations)
+            out = layer.forward(out, **condition_kwargs)
 
         return out
 
@@ -234,7 +210,9 @@ class RealNVPBijector(ConditionalBijector):
 
         out = x
         for layer in self.layers:
-            out, log_det_jacobian = layer.forward_and_jacobian(out, observations)
+            log_det_jacobian = layer.forward_log_det_jacobian(
+                out, **condition_kwargs)
+            out = layer.forward(out, **condition_kwargs)
             assert (sum_log_det_jacobians.shape.as_list()
                     == log_det_jacobian.shape.as_list())
 
@@ -248,7 +226,7 @@ class RealNVPBijector(ConditionalBijector):
 
         out = y
         for layer in reversed(self.layers):
-            out, _ = layer.backward_and_jacobian(out, observations)
+            out = layer.inverse(out, **condition_kwargs)
 
         return out
 
@@ -261,7 +239,9 @@ class RealNVPBijector(ConditionalBijector):
 
         out = y
         for layer in reversed(self.layers):
-            out, log_det_jacobian = layer.backward_and_jacobian(out, observations)
+            log_det_jacobian = layer.inverse_log_det_jacobian(
+                out, **condition_kwargs)
+            out = layer.inverse(out, **condition_kwargs)
             assert (sum_log_det_jacobians.shape.as_list()
                     == log_det_jacobian.shape.as_list())
 
