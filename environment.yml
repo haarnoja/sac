@@ -23,8 +23,6 @@ dependencies:
     - matplotlib
     - opencv3=3.1.0
     - scikit-learn
-    - pytorch==0.1.9
-    - torchvision==0.1.6
     - mpi4py
     - pandas
     - pip:
@@ -45,8 +43,6 @@ dependencies:
         - Cython
         - redis
         - keras==1.2.1
-        - git+https://github.com/Theano/Theano.git@adfe319ce6b781083d8dc3200fb4481b00853791#egg=Theano
-        - git+https://github.com/neocxi/Lasagne.git@484866cf8b38d878e92d521be445968531646bb8#egg=Lasagne
         - git+https://github.com/plotly/plotly.py.git@2594076e29584ede2d09f2aa40a8a195b3f3fc66#egg=plotly
         # See the Dockerfile for rllab.
         # - git+https://github.com/rll/rllab.git@b3a28992eca103cab3cb58363dd7a4bb07f250a0#egg=rllab
