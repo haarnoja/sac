@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from sac.distributions import RealNVPBijector
 
-EPS = 1e-9
+EPS = 1e-6
 
 DEFAULT_CONFIG = {
     "mode": "train",
