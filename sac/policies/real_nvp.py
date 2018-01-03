@@ -88,7 +88,7 @@ class RealNVPPolicy(object):
             self.y, bijector_kwargs={"observations": observations})
         self.pi = tf.exp(self.log_pi)
 
-        log_Z = 0.0
+        log_Z = 0.295937
         surrogate_loss = tf.reduce_mean(
             self.log_pi * tf.stop_gradient(
                 self.log_pi - self.Q - squash_correction + log_Z))
