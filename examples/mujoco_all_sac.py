@@ -4,7 +4,7 @@ from rllab.envs.normalized_env import normalize
 from rllab.misc.instrument import VariantGenerator
 
 from sac.algos import SAC
-from sac.envs.gym_env import GymEnv
+from sac.envs import GymEnv, MultiDirectionSwimmerEnv
 from sac.misc.instrument import run_sac_experiment
 from sac.misc.utils import timestamp
 from sac.policies.gmm import GMMPolicy
@@ -30,6 +30,14 @@ COMMON_PARAMS = {
 
 
 ENV_PARAMS = {
+    'multi-direction-swimmer': { # 2 DoF
+        'prefix': 'multi-direction-swimmer',
+        'env_name': 'multi-direction-swimmer',
+        'max_path_length': 1000,
+        'n_epochs': 202,
+        'scale_reward': 100.0,
+        'n_train_repeat': 4,
+    },
     'swimmer': { # 2 DoF
         'prefix': 'swimmer',
         'env_name': 'swimmer-rllab',
@@ -113,6 +121,8 @@ def run_experiment(variant):
     elif variant['env_name'] == 'swimmer-rllab':
         from rllab.envs.mujoco.swimmer_env import SwimmerEnv
         env = normalize(SwimmerEnv())
+    elif variant['env_name'] == 'multi-direction-swimmer':
+        env = normalize(MultiDirectionSwimmerEnv())
     else:
         env = normalize(GymEnv(variant['env_name']))
 
