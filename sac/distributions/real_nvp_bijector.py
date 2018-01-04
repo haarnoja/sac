@@ -8,17 +8,22 @@ import tensorflow as tf
 import numpy as np
 ConditionalBijector = tf.contrib.distributions.bijectors.ConditionalBijector
 
-__all__ = [ "RealNVPBijector", ]
+__all__ = [
+    "RealNVPBijector",
+]
 
 
 def checkerboard(shape, parity="even", dtype=tf.bool):
-    """TODO: Check this implementation"""
-    unit = (
-        tf.constant((True, False))
-        if parity == "even"
-        else tf.constant((False, True)))
+    """TODO: Implement for dimensions >1"""
+    if len(shape) > 1:
+        raise NotImplementedError(
+            "checkerboard not yet implemented for dimensions >1")
 
-    tiled = tf.tile(unit, (np.prod(shape) // 2,))
+    unit = (tf.constant((True, False))
+            if parity == "even" else tf.constant((False, True)))
+
+    num_elements = np.prod(shape)
+    tiled = tf.tile(unit, ((num_elements // 2) + 1, ))[:num_elements]
     return tf.cast(tf.reshape(tiled, shape), dtype)
 
 
@@ -40,7 +45,7 @@ def feedforward_net(inputs,
         bias_initializer = tf.initializers.random_normal()
         bias = tf.get_variable(
             name="bias_{i}".format(i=i),
-            shape=(layer_size,),
+            shape=(layer_size, ),
             initializer=bias_initializer)
 
         prev_size = layer_size
@@ -48,7 +53,7 @@ def feedforward_net(inputs,
 
         if i < len(layer_sizes) - 1 and activation_fn is not None:
             out = activation_fn(z)
-        elif i == len(layer_sizes) -1 and output_nonlinearity is not None:
+        elif i == len(layer_sizes) - 1 and output_nonlinearity is not None:
             out = output_nonlinearity(z)
         else:
             out = z
@@ -218,8 +223,8 @@ class CouplingBijector(ConditionalBijector):
 
 DEFAULT_CONFIG = {
     "num_coupling_layers": 2,
-    "translation_hidden_sizes": (25,),
-    "scale_hidden_sizes": (25,),
+    "translation_hidden_sizes": (25, ),
+    "scale_hidden_sizes": (25, ),
     "scale_regularization": 5e2
 }
 
