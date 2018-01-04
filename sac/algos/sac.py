@@ -7,8 +7,7 @@ from rllab.misc.overrides import overrides
 
 from .base import RLAlgorithm
 
-EPS = 1E-6
-
+EPS = 1e-6
 
 class SAC(RLAlgorithm, Serializable):
     """Soft Actor-Critic (SAC)
