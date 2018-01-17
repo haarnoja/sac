@@ -1,6 +1,8 @@
 import argparse
 
 from rllab.envs.normalized_env import normalize
+from rllab.envs.mujoco.swimmer_env import SwimmerEnv
+from rllab.envs.mujoco.humanoid_env import HumanoidEnv
 from rllab.misc.instrument import VariantGenerator
 
 from sac.algos import SAC
@@ -116,10 +118,8 @@ def get_variants(args):
 
 def run_experiment(variant):
     if variant['env_name'] == 'humanoid-rllab':
-        from rllab.envs.mujoco.humanoid_env import HumanoidEnv
         env = normalize(HumanoidEnv())
     elif variant['env_name'] == 'swimmer-rllab':
-        from rllab.envs.mujoco.swimmer_env import SwimmerEnv
         env = normalize(SwimmerEnv())
     elif variant['env_name'] == 'multi-direction-swimmer':
         env = normalize(MultiDirectionSwimmerEnv())
@@ -183,8 +183,7 @@ def run_experiment(variant):
 
 def launch_experiments(variant_generator):
     variants = variant_generator.variants()
-
-    for i, variant in enumerate(variants):
+    for i, variant in enumerate(variants, 1):
         print('Launching {} experiments.'.format(len(variants)))
         run_sac_experiment(
             run_experiment,
