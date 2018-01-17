@@ -208,7 +208,7 @@ class RLAlgorithm(Algorithm):
         """Method to be called at the start of training.
 
         :param env: Environment instance.
-        :param policy:  Policy instance.
+        :param policy: Policy instance.
         :return: None
         """
 
