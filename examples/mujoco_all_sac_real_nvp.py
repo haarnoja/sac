@@ -5,24 +5,26 @@ from rllab.misc.instrument import VariantGenerator
 
 from sac.algos import SAC
 from sac.algos import SACV2
-from sac.envs import GymEnv, MultiDirectionSwimmerEnv
+from sac.envs import (
+    GymEnv, MultiDirectionSwimmerEnv, MultiDirectionAntEnv)
 from sac.misc.instrument import run_sac_experiment
 from sac.misc.utils import timestamp
 from sac.policies import GMMPolicy, RealNVPPolicy
 from sac.replay_buffers import SimpleReplayBuffer
 from sac.value_functions import NNQFunction, NNVFunction
+from sac.preprocessors import MLPPreprocessor
 
 
 COMMON_PARAMS = {
     "seed": [1, 2, 3],
     "lr": 3E-4,
     "discount": 0.99,
-    "target_update_interval": [1000.0],
-    "tau": 1.0, # 1e-2 if target_update_interval == 1
+    "target_update_interval": 1,
+    "tau": 1e-2,
     "layer_size": 128,
     "batch_size": 128,
     "max_pool_size": 1E6,
-    "n_train_repeat": 4,
+    "n_train_repeat": [4],
     "epoch_length": 1000,
     "snapshot_mode": 'gap',
     "snapshot_gap": 100,
@@ -33,6 +35,8 @@ COMMON_PARAMS = {
     "policy_coupling_layers": [2],
     "policy_s_t_layers": [1],
     "policy_s_t_units": [128],
+
+    "preprocessing_hidden_sizes": [(128, 16)],
 }
 
 
@@ -44,6 +48,7 @@ ENV_PARAMS = {
         'n_epochs': 502,
         'scale_reward': 100.0,
 
+        "preprocessing_hidden_sizes": None,
     },
     'swimmer': { # 2 DoF
         'prefix': 'swimmer',
@@ -75,12 +80,23 @@ ENV_PARAMS = {
         'n_epochs': 5001,
         'scale_reward': 3,
     },
+    'multi-direction-ant': { # 8 DoF
+        'prefix': 'multi-direction-ant',
+        'env_name': 'multi-direction-ant',
+        'max_path_length': 1000,
+        'n_epochs': 10001,
+        'scale_reward': [10.0],
+
+        "preprocessing_hidden_sizes": [(128, 16)],
+    },
     'ant': { # 8 DoF
         'prefix': 'ant',
         'env_name': 'Ant-v1',
         'max_path_length': 1000,
         'n_epochs': 10001,
-        'scale_reward': [3.0],
+        'scale_reward': [10.0],
+
+        "preprocessing_hidden_sizes": [(128, 16)],
     },
     'humanoid': { # 21 DoF
         'prefix': 'humanoid',
@@ -131,6 +147,8 @@ def run_experiment(variant):
         env = normalize(SwimmerEnv())
     elif variant['env_name'] == 'multi-direction-swimmer':
         env = normalize(MultiDirectionSwimmerEnv())
+    elif variant['env_name'] == 'multi-direction-ant':
+        env = normalize(MultiDirectionAntEnv())
     else:
         env = normalize(GymEnv(variant['env_name']))
 
@@ -162,6 +180,14 @@ def run_experiment(variant):
         hidden_layer_sizes=[M, M],
     )
 
+    preprocessing_hidden_sizes = variant.get('preprocessing_hidden_sizes')
+    observations_preprocessor = (
+        MLPPreprocessor(env_spec=env.spec,
+                        layer_sizes=preprocessing_hidden_sizes)
+        if preprocessing_hidden_sizes is not None
+        else None
+    )
+
     policy_s_t_layers = variant['policy_s_t_layers']
     policy_s_t_units = variant['policy_s_t_units']
     s_t_hidden_sizes = [policy_s_t_units] * policy_s_t_layers
@@ -183,6 +209,7 @@ def run_experiment(variant):
         env_spec=env.spec,
         config=policy_config,
         qf=qf,
+        observations_preprocessor=observations_preprocessor
     )
 
     algorithm = SACV2(
