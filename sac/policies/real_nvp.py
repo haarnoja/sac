@@ -9,27 +9,16 @@ from rllab.core.serializable import Serializable
 from sac.distributions import RealNVPBijector
 from sac.policies import NNPolicy
 
-EPS = 1e-6
-
-DEFAULT_CONFIG = {
-    "mode": "train",
-    "D_in": 2,
-    "learning_rate": 1e-4,
-    "squash": False,
-    "real_nvp_config": None
-}
-
-DEFAULT_BATCH_SIZE = 32
-
 class RealNVPPolicy(NNPolicy, Serializable):
     """Real NVP policy"""
 
     def __init__(self,
                  env_spec,
-                 config=None,
-                 qf=None,
+                 mode="train",
+                 squash=True,
+                 real_nvp_config=None,
                  observations_preprocessor=None,
-                 name="policy"):
+                 name="real_nvp_policy"):
         """Initialize Real NVP policy.
 
         Args:
@@ -39,24 +28,24 @@ class RealNVPPolicy(NNPolicy, Serializable):
                 configuration for real nvp distribution.
             squash (`bool`): If True, squash the action samples between
                 -1 and 1 with tanh.
-            qf (`ValueFunction`): Q-function approximator.
         """
         Serializable.quick_init(self, locals())
 
-        self.config = dict(DEFAULT_CONFIG, **(config or {}))
-
         self._env_spec = env_spec
+        self._real_nvp_config = real_nvp_config
+        self._mode = mode
+        self._squash = squash
+        self._observations_preprocessor = observations_preprocessor
+
         self._Da = env_spec.action_space.flat_dim
         self._Ds = env_spec.observation_space.flat_dim
         self._fixed_h = None
         self._is_deterministic = False
-        self._qf = qf
         self._observations_preprocessor = observations_preprocessor
 
         self.name = name
         self.build()
 
-        squash = self.config["squash"]
         super().__init__(
             env_spec,
             self._observations_ph,
@@ -70,14 +59,14 @@ class RealNVPPolicy(NNPolicy, Serializable):
 
         with tf.variable_scope(name, reuse=reuse):
             if self._observations_preprocessor is not None:
-                condition_var = self._observations_preprocessor.get_output_for(
+                conditions = self._observations_preprocessor.get_output_for(
                     observations, reuse=reuse)
             else:
-                condition_var = observations
+                conditions = observations
 
-            N = tf.shape(condition_var)[0]
+            N = tf.shape(conditions)[0]
             actions = self.distribution.sample(
-                N, bijector_kwargs={"observations": condition_var})
+                N, bijector_kwargs={"conditions": conditions})
 
             if stop_gradient:
                 actions = tf.stop_gradient(actions)
@@ -85,25 +74,30 @@ class RealNVPPolicy(NNPolicy, Serializable):
             return actions
 
 
-    def log_pi_for(self, condition_var, actions=None, name=None, reuse=tf.AUTO_REUSE,
+    def log_pi_for(self, conditions, actions=None, name=None, reuse=tf.AUTO_REUSE,
                    stop_action_gradient=True):
         name = name or self.name
         if actions is None:
-            actions = self.actions_for(condition_var, name, reuse,
+            actions = self.actions_for(conditions, name, reuse,
                                        stop_gradient=stop_action_gradient)
 
         with tf.variable_scope(name, reuse=reuse):
             if self._observations_preprocessor is not None:
-                condition_var = self._observations_preprocessor.get_output_for(
-                    condition_var, reuse=reuse)
+                conditions = self._observations_preprocessor.get_output_for(
+                    conditions, reuse=reuse)
 
             return self.distribution.log_prob(
-                actions, bijector_kwargs={"observations": condition_var})
+                actions, bijector_kwargs={"conditions": conditions})
 
     def build(self):
         ds = tf.contrib.distributions
+        real_nvp_config = self._real_nvp_config
         self.bijector = RealNVPBijector(
-            config=self.config["real_nvp_config"], event_ndims=self._Da)
+            num_coupling_layers=real_nvp_config.get("num_coupling_layers"),
+            translation_hidden_sizes=real_nvp_config.get("translation_hidden_sizes"),
+            scale_hidden_sizes=real_nvp_config.get("scale_hidden_sizes"),
+            scale_regularization=real_nvp_config.get("scale_regularization"),
+            event_ndims=self._Da)
 
         self.base_distribution = ds.MultivariateNormalDiag(
             loc=tf.zeros(self._Da), scale_diag=tf.ones(self._Da))
@@ -126,15 +120,15 @@ class RealNVPPolicy(NNPolicy, Serializable):
         )
 
         if self._observations_preprocessor is not None:
-            self._condition_var = self._observations_preprocessor.get_output_for(
+            self._conditions = self._observations_preprocessor.get_output_for(
                 self._observations_ph, reuse=True)
         else:
-            self._condition_var = self._observations_ph
+            self._conditions = self._observations_ph
 
         self._actions = self.actions_for(self._observations_ph)
         with tf.variable_scope(self.name, reuse=tf.AUTO_REUSE):
             self._determistic_actions = self.bijector.forward(
-                self._latents_ph, observations=self._condition_var)
+                self._latents_ph, conditions=self._conditions)
 
     def get_action(self, observation):
         """Sample single action based on the observations.

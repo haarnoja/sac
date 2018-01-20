@@ -17,13 +17,13 @@ from sac.preprocessors import MLPPreprocessor
 
 COMMON_PARAMS = {
     "seed": [1, 2, 3],
-    "lr": 3E-4,
+    "lr": 3e-4,
     "discount": 0.99,
     "target_update_interval": 1,
     "tau": 1e-2,
     "layer_size": 128,
     "batch_size": 128,
-    "max_pool_size": 1E6,
+    "max_pool_size": 1e6,
     "n_train_repeat": [4],
     "epoch_length": 1000,
     "snapshot_mode": 'gap',
@@ -31,12 +31,11 @@ COMMON_PARAMS = {
     "sync_pkl": True,
 
     # real nvp configs
-    "policy_lr":  3e-4,
     "policy_coupling_layers": [2],
     "policy_s_t_layers": [1],
     "policy_s_t_units": [128],
 
-    "preprocessing_hidden_sizes": [(128, 16)],
+    "preprocessing_hidden_sizes": None,
 }
 
 
@@ -63,7 +62,6 @@ ENV_PARAMS = {
         'max_path_length': 1000,
         'n_epochs': 3001,
         'scale_reward': 1,
-        'policy_lr': [3e-4, 1e-3],
     },
     'half-cheetah': { # 6 DoF
         'prefix': 'half-cheetah',
@@ -71,7 +69,7 @@ ENV_PARAMS = {
         'max_path_length': 1000,
         'n_epochs': 10001,
         'scale_reward': 1,
-        'max_pool_size': 1E7,
+        'max_pool_size': 1e7,
     },
     'walker': { # 6 DoF
         'prefix': 'walker',
@@ -107,7 +105,7 @@ ENV_PARAMS = {
         'env_name': 'humanoid-rllab',
         'max_path_length': 1000,
         'n_epochs': 20001,
-        'scale_reward': 3,
+        'scale_reward': [10.0],
 
         "snapshot_gap": 2000,
     },
@@ -198,22 +196,18 @@ def run_experiment(variant):
     policy_s_t_units = variant['policy_s_t_units']
     s_t_hidden_sizes = [policy_s_t_units] * policy_s_t_layers
 
-    policy_config = {
-        "mode": "train",
-        # "learning_rate": 5e-4, # not used, see variant
-        "squash": True,
-        "real_nvp_config": {
-            "scale_regularization": 0.0,
-            "num_coupling_layers": variant['policy_coupling_layers'],
-            "translation_hidden_sizes": s_t_hidden_sizes,
-            "scale_hidden_sizes": s_t_hidden_sizes,
-        }
+    real_nvp_config = {
+        "scale_regularization": 0.0,
+        "num_coupling_layers": variant['policy_coupling_layers'],
+        "translation_hidden_sizes": s_t_hidden_sizes,
+        "scale_hidden_sizes": s_t_hidden_sizes,
     }
 
     policy = RealNVPPolicy(
         env_spec=env.spec,
-        config=policy_config,
-        qf=qf,
+        mode="train",
+        squash=True,
+        real_nvp_config=real_nvp_config,
         observations_preprocessor=observations_preprocessor
     )
 
@@ -225,7 +219,6 @@ def run_experiment(variant):
         qf=qf,
         vf=vf,
 
-        policy_lr=variant["policy_lr"],
         lr=variant['lr'],
         scale_reward=variant['scale_reward'],
         discount=variant['discount'],
