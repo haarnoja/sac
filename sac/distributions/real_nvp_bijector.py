@@ -284,17 +284,17 @@ class RealNVPBijector(ConditionalBijector):
         translation_hidden_sizes = self._translation_hidden_sizes
         scale_hidden_sizes = self._scale_hidden_sizes
 
-        def translation_wrapper(inputs, observations):
+        def translation_wrapper(inputs, conditions):
             output_size = inputs.shape.as_list()[-1]
             return feedforward_net(
-                tf.concat((inputs, observations), axis=1),
+                tf.concat((inputs, conditions), axis=1),
                 # TODO: should allow multi_dimensional inputs/outputs
                 layer_sizes=(*translation_hidden_sizes, output_size))
 
-        def scale_wrapper(inputs, observations):
+        def scale_wrapper(inputs, conditions):
             output_size = inputs.shape.as_list()[-1]
             return feedforward_net(
-                tf.concat((inputs, observations), axis=1),
+                tf.concat((inputs, conditions), axis=1),
                 # TODO: should allow multi_dimensional inputs/outputs
                 layer_sizes=(*scale_hidden_sizes, output_size),
                 regularizer=tf.contrib.layers.l2_regularizer(
