@@ -9,6 +9,10 @@ from rllab.core.serializable import Serializable
 from sac.distributions import RealNVPBijector
 from sac.policies import NNPolicy
 
+
+EPS = 1e-6
+
+
 class RealNVPPolicy(NNPolicy, Serializable):
     """Real NVP policy"""
 
@@ -35,7 +39,6 @@ class RealNVPPolicy(NNPolicy, Serializable):
         self._real_nvp_config = real_nvp_config
         self._mode = mode
         self._squash = squash
-        self._observations_preprocessor = observations_preprocessor
 
         self._Da = env_spec.action_space.flat_dim
         self._Ds = env_spec.observation_space.flat_dim
@@ -46,48 +49,54 @@ class RealNVPPolicy(NNPolicy, Serializable):
         self.name = name
         self.build()
 
-        super().__init__(
-            env_spec,
-            self._observations_ph,
-            tf.tanh(self._actions) if squash else self._actions,
-            scope_name='policy'
-        )
+        self._scope_name = (
+            tf.get_variable_scope().name if not name else name)
+        super(NNPolicy, self).__init__(env_spec)
 
-    def actions_for(self, observations, name=None, reuse=tf.AUTO_REUSE,
-                    stop_gradient=True):
+    def actions_for(self, observations, latents=None,
+                    name=None, reuse=tf.AUTO_REUSE, with_log_pis=False):
         name = name or self.name
 
         with tf.variable_scope(name, reuse=reuse):
-            if self._observations_preprocessor is not None:
-                conditions = self._observations_preprocessor.get_output_for(
+            conditions = (
+                self._observations_preprocessor.get_output_for(
                     observations, reuse=reuse)
+                if self._observations_preprocessor is not None
+                else observations)
+
+            if latents is not None:
+                raw_actions = self.bijector.forward(
+                    latents, conditions=conditions)
             else:
-                conditions = observations
+                N = tf.shape(conditions)[0]
+                raw_actions = self.distribution.sample(
+                    N, bijector_kwargs={"conditions": conditions})
 
-            N = tf.shape(conditions)[0]
-            actions = self.distribution.sample(
-                N, bijector_kwargs={"conditions": conditions})
+            raw_actions = tf.stop_gradient(raw_actions)
 
-            if stop_gradient:
-                actions = tf.stop_gradient(actions)
+        actions = tf.tanh(raw_actions) if self._squash else raw_actions
 
-            return actions
+        # TODO: should always return same shape out
+        # Figure out how to make the interface for `log_pis` cleaner
+        if with_log_pis:
+            log_pis = self.log_pis_for(
+                conditions, raw_actions, name=name, reuse=reuse)
+            return actions, log_pis
+
+        return actions
 
 
-    def log_pi_for(self, conditions, actions=None, name=None, reuse=tf.AUTO_REUSE,
-                   stop_action_gradient=True):
+    def log_pis_for(self, conditions, raw_actions, name=None, reuse=tf.AUTO_REUSE):
         name = name or self.name
-        if actions is None:
-            actions = self.actions_for(conditions, name, reuse,
-                                       stop_gradient=stop_action_gradient)
 
         with tf.variable_scope(name, reuse=reuse):
-            if self._observations_preprocessor is not None:
-                conditions = self._observations_preprocessor.get_output_for(
-                    conditions, reuse=reuse)
+            log_pis = self.distribution.log_prob(
+                raw_actions, bijector_kwargs={"conditions": conditions})
 
-            return self.distribution.log_prob(
-                actions, bijector_kwargs={"conditions": conditions})
+        if self._squash:
+            log_pis -= self._squash_correction(raw_actions)
+
+        return log_pis
 
     def build(self):
         ds = tf.contrib.distributions
@@ -119,16 +128,9 @@ class RealNVPPolicy(NNPolicy, Serializable):
             name='latents',
         )
 
-        if self._observations_preprocessor is not None:
-            self._conditions = self._observations_preprocessor.get_output_for(
-                self._observations_ph, reuse=True)
-        else:
-            self._conditions = self._observations_ph
-
         self._actions = self.actions_for(self._observations_ph)
-        with tf.variable_scope(self.name, reuse=tf.AUTO_REUSE):
-            self._determistic_actions = self.bijector.forward(
-                self._latents_ph, conditions=self._conditions)
+        self._determistic_actions = self.actions_for(self._observations_ph,
+                                                     self._latents_ph)
 
     def get_action(self, observation):
         """Sample single action based on the observations.
@@ -154,6 +156,10 @@ class RealNVPPolicy(NNPolicy, Serializable):
                 self._actions, feed_dict=feed_dict)
 
         return actions
+
+    def _squash_correction(self, actions):
+        if not self._squash: return 0
+        return tf.reduce_sum(tf.log(1 - tf.tanh(actions) ** 2 + EPS), axis=1)
 
     @contextmanager
     def deterministic(self, set_deterministic=True):
