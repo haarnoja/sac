@@ -103,23 +103,27 @@ class CouplingBijector(ConditionalBijector):
         self._maybe_assert_valid_x(x)
 
         D = x.shape[1]
-
-        if D % 2 != 0:
-            x = tf.pad(x, [[0,0], [0, 1]], constant_values=0)
-
-        slice_begin = {"even": 0, "odd": 1}[self.parity]
-        masked_x = x[:, slice(slice_begin, None, 2)]
-        non_masked_x = x[:, slice(1-slice_begin, None, 2)]
+        if self.parity == 'even':
+            masked_x = x[:, :D//2]
+            non_masked_x = x[:, D//2:]
+        else:
+            non_masked_x = x[:, :D//2]
+            masked_x = x[:, D//2:]
 
         with tf.variable_scope("{name}/scale".format(name=self.name),
                                reuse=tf.AUTO_REUSE):
             # s(x_{1:d}) in paper
-            scale = self.scale_fn(masked_x, condition_kwargs['condition'])
+            scale = self.scale_fn(masked_x,
+                                  condition_kwargs['condition'],
+                                  non_masked_x.shape[-1])
 
         with tf.variable_scope("{name}/translation".format(name=self.name),
                                reuse=tf.AUTO_REUSE):
             # t(x_{1:d}) in paper
-            translation = self.translation_fn(masked_x, condition_kwargs['condition'])
+            translation = self.translation_fn(masked_x,
+                                              condition_kwargs['condition'],
+                                              non_masked_x.shape[-1])
+
 
         # exp(s(b*x)) in paper
         exp_scale = tf.exp(scale)
@@ -132,16 +136,13 @@ class CouplingBijector(ConditionalBijector):
         part_1 = masked_x
         part_2 = non_masked_x * exp_scale + translation
 
-        to_interleave = (
+        to_concat = (
             (part_2, part_1)
             if self.parity == "odd"
             else (part_1, part_2)
         )
 
-        outputs = tf.reshape(
-            tf.stack(to_interleave, axis=2),
-            tf.shape(x)
-        )[:, :D]
+        outputs = tf.concat(to_concat, axis=1)
 
         return outputs
 
@@ -149,20 +150,20 @@ class CouplingBijector(ConditionalBijector):
         self._maybe_assert_valid_x(x)
 
         D = x.shape[1]
-
-        if D % 2 != 0:
-            x = tf.pad(x, [[0,0], [0, 1]], constant_values=0)
-
-        slice_begin = {"odd": 1, "even": 0}[self.parity]
-        masked_x = x[:, slice(slice_begin, None, 2)]
+        masked_slice = (
+            slice(None, D//2)
+            if self.parity == 'even'
+            else slice(D//2, None))
+        masked_x = x[:, masked_slice]
+        nonlinearity_output_size = D - masked_x.shape[1]
 
         # TODO: scale and translation could be merged into a single network
         with tf.variable_scope("{name}/scale".format(name=self.name),
                                reuse=tf.AUTO_REUSE):
-            scale = self.scale_fn(masked_x, **condition_kwargs)
-
-        if D % 2 != 0 and slice_begin == 1:
-            scale = scale[:, :-1]
+            scale = self.scale_fn(
+                masked_x,
+                **condition_kwargs,
+                output_size=nonlinearity_output_size)
 
         log_det_jacobian = tf.reduce_sum(
             scale, axis=tuple(range(1, len(x.shape))))
@@ -172,25 +173,30 @@ class CouplingBijector(ConditionalBijector):
     def _inverse(self, y, **condition_kwargs):
         self._maybe_assert_valid_y(y)
 
-        D = y.shape[1]
-
-        if D % 2 != 0:
-            y = tf.pad(y, [[0,0], [0, 1]], constant_values=0)
-
-        slice_begin = {"even": 0, "odd": 1}[self.parity]
-        masked_y = y[:, slice(slice_begin, None, 2)]
-        non_masked_y = y[:, slice(1-slice_begin, None, 2)]
         condition = condition_kwargs["condition"]
+
+        D = y.shape[1]
+        if self.parity == 'even':
+            masked_y = y[:, :D//2]
+            non_masked_y = y[:, D//2:]
+        else:
+            non_masked_y = y[:, :D//2]
+            masked_y = y[:, D//2:]
+
 
         with tf.variable_scope("{name}/scale".format(name=self.name),
                                reuse=tf.AUTO_REUSE):
             # s(y_{1:d}) in paper
-            scale = self.scale_fn(masked_y, condition)
+            scale = self.scale_fn(masked_y,
+                                  condition,
+                                  non_masked_y.shape[-1])
 
         with tf.variable_scope("{name}/translation".format(name=self.name),
                                reuse=tf.AUTO_REUSE):
             # t(y_{1:d}) in paper
-            translation = self.translation_fn(masked_y, condition)
+            translation = self.translation_fn(masked_y,
+                                              condition,
+                                              non_masked_y.shape[-1])
 
         exp_scale = tf.exp(-scale)
         if condition_kwargs.get('regularize', False):
@@ -202,38 +208,35 @@ class CouplingBijector(ConditionalBijector):
         part_1 = masked_y
         part_2 = (non_masked_y - translation) * exp_scale
 
-        to_interleave = (
+        to_concat = (
             (part_2, part_1)
             if self.parity == "odd"
             else (part_1, part_2)
         )
 
-        outputs = tf.reshape(
-            tf.stack(to_interleave, axis=2),
-            tf.shape(y)
-        )[:, :D]
+        outputs = tf.concat(to_concat, axis=1)
 
         return outputs
 
     def _inverse_log_det_jacobian(self, y, **condition_kwargs):
         self._maybe_assert_valid_y(y)
 
-        D = y.shape[1]
-
-        if D % 2 != 0:
-            y = tf.pad(y, [[0,0], [0, 1]], constant_values=0)
-
-        slice_begin = {"odd": 1, "even": 0}[self.parity]
-        masked_y = y[:, slice(slice_begin, None, 2)]
         condition = condition_kwargs["condition"]
+
+        D = y.shape[1]
+        masked_slice = (
+            slice(None, D//2)
+            if self.parity == 'even'
+            else slice(D//2, None))
+        masked_y = y[:, masked_slice]
+        nonlinearity_output_size = D - masked_y.shape[1]
 
         # TODO: scale and translation could be merged into a single network
         with tf.variable_scope("{name}/scale".format(name=self.name),
                                reuse=tf.AUTO_REUSE):
-            scale = self.scale_fn(masked_y, condition)
-
-        if D % 2 != 0 and slice_begin == 1:
-            scale = scale[:, :-1]
+            scale = self.scale_fn(masked_y,
+                                  condition,
+                                  nonlinearity_output_size)
 
         log_det_jacobian = -tf.reduce_sum(
             scale, axis=tuple(range(1, len(y.shape))))
@@ -298,15 +301,13 @@ class RealNVPBijector(ConditionalBijector):
         translation_hidden_sizes = self._translation_hidden_sizes
         scale_hidden_sizes = self._scale_hidden_sizes
 
-        def translation_wrapper(inputs, condition):
-            output_size = inputs.shape.as_list()[-1]
+        def translation_wrapper(inputs, condition, output_size):
             return feedforward_net(
                 tf.concat((inputs, condition), axis=1),
                 # TODO: should allow multi_dimensional inputs/outputs
                 layer_sizes=(*translation_hidden_sizes, output_size))
 
-        def scale_wrapper(inputs, condition):
-            output_size = inputs.shape.as_list()[-1]
+        def scale_wrapper(inputs, condition, output_size):
             return feedforward_net(
                 tf.concat((inputs, condition), axis=1),
                 # TODO: should allow multi_dimensional inputs/outputs
