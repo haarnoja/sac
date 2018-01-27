@@ -126,7 +126,9 @@ class CouplingBijector(ConditionalBijector):
 
 
         # exp(s(b*x)) in paper
-        exp_scale = tf.exp(scale)
+        exp_scale = tf.check_numerics(
+            tf.exp(scale), "tf.exp(scale) constains NaNs or infs")
+
         if condition_kwargs.get('regularize', False):
             tf.add_to_collection(
                 tf.GraphKeys.REGULARIZATION_LOSSES,
