@@ -28,7 +28,6 @@ COMMON_PARAMS = {
     'snapshot_mode': 'last',
     'snapshot_gap': 100,
     'sync_pkl': True,
-
     # real nvp configs
     'policy_coupling_layers': 4,
     'policy_s_t_layers': 1,
