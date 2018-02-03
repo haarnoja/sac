@@ -123,7 +123,7 @@ ENV_PARAMS = {
 
         'snapshot_gap': 1000,
     },
-    'multi-direction-ant': {  # 2 DoF
+    'multi-direction-ant': {  # 8 DoF
         'prefix': 'multi-direction-ant',
         'env_name': 'multi-direction-ant',
         'max_path_length': 1000,
@@ -133,6 +133,8 @@ ENV_PARAMS = {
 
         'preprocessing_hidden_sizes': (128, 128, 16),
         'policy_s_t_units': 8,
+
+        'snapshot_gap': 1000,
     },
     'humanoid': {  # 21 DoF
         'prefix': 'humanoid',
@@ -145,7 +147,7 @@ ENV_PARAMS = {
 
         'snapshot_gap': 2000,
     },
-    'multi-direction-humanoid': {  # 2 DoF
+    'multi-direction-humanoid': {  # 21 DoF
         'prefix': 'multi-direction-humanoid',
         'env_name': 'multi-direction-humanoid',
         'max_path_length': 1000,
