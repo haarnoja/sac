@@ -34,7 +34,10 @@ COMMON_PARAMS = {
     'policy_s_t_layers': 1,
     'policy_scale_regularization': 0.0,
     'preprocessing_hidden_sizes': None,
-    'preprocessing_output_nonlinearity': 'relu'
+    'preprocessing_output_nonlinearity': 'relu',
+
+    # evaluation
+    'n_map_action_candidates': 1
 }
 
 
@@ -202,7 +205,10 @@ def run_experiment(variant):
         mode="train",
         squash=True,
         real_nvp_config=real_nvp_config,
-        observations_preprocessor=observations_preprocessor)
+        observations_preprocessor=observations_preprocessor,
+        q_function=qf,
+        n_map_action_candidates=variant['n_map_action_candidates']
+    )
 
     algorithm = SACV2(
         base_kwargs=base_kwargs,
