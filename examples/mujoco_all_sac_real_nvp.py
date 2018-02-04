@@ -62,7 +62,7 @@ ENV_PARAMS = {
         'env_name': 'multi-direction-swimmer',
         'epoch_length': 1000,
         'max_path_length': 1000,
-        'n_epochs': 1e3 + 1,
+        'n_epochs': int(1e3 + 1),
         'scale_reward': 100.0,
 
         'preprocessing_hidden_sizes': (128, 128, 4),
@@ -75,7 +75,7 @@ ENV_PARAMS = {
         'env_name': 'random-goal-swimmer',
         'epoch_length': 2000,
         'max_path_length': 2000,
-        'n_epochs': 1e4 + 1,
+        'n_epochs': int(1e4 + 1),
         'scale_reward': 100.0,
 
         'preprocessing_hidden_sizes': (128, 128, 4),
@@ -96,7 +96,7 @@ ENV_PARAMS = {
         'env_name': 'multi-direction-ant',
         'epoch_length': 1000,
         'max_path_length': 1000,
-        'n_epochs': 1e4 + 1,
+        'n_epochs': int(1e4 + 1),
         'scale_reward': 3.0,  # Haven't sweeped this yet.
 
         'preprocessing_hidden_sizes': (128, 128, 16),
@@ -109,7 +109,7 @@ ENV_PARAMS = {
         'env_name': 'random-goal-ant',
         'epoch_length': 2000,
         'max_path_length': 2000,
-        'n_epochs': 1e5 + 1,
+        'n_epochs': int(1e5 + 1),
         'scale_reward': 3.0,  # Haven't sweeped this yet.
 
         'preprocessing_hidden_sizes': (128, 128, 16),
@@ -130,7 +130,7 @@ ENV_PARAMS = {
         'env_name': 'multi-direction-humanoid',
         'epoch_length': 1000,
         'max_path_length': 1000,
-        'n_epochs': 2e4 + 1,
+        'n_epochs': int(2e4 + 1),
         'preprocessing_hidden_sizes': (128, 128, 42),
         'policy_s_t_units': 21,
         'scale_reward': 3.0,
@@ -142,7 +142,7 @@ ENV_PARAMS = {
         'env_name': 'random-goal-humanoid',
         'epoch_length': 2000,
         'max_path_length': 2000,
-        'n_epochs': 2e5 + 1,
+        'n_epochs': int(2e5 + 1),
         'scale_reward': 3.0,  # Haven't sweeped this yet.
 
         'preprocessing_hidden_sizes': (128, 128, 42),
@@ -214,7 +214,7 @@ def run_experiment(variant):
         env_args = {
             name.lstrip('env_'): value
             for name, value in variant.items()
-            if name.startswith('env_')
+            if name.startswith('env_') and name != 'env_name'
         }
         env = normalize(EnvClass(**env_args))
 
