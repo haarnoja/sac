@@ -41,7 +41,7 @@ COMMON_PARAMS = {
     'layer_size': 128,
     'batch_size': 128,
     'max_pool_size': 1e6,
-    'n_train_repeat': [1, 4],
+    'n_train_repeat': 1,
     'epoch_length': 1000,
     'snapshot_mode': 'gap',
     'snapshot_gap': 1000,
@@ -63,7 +63,7 @@ ENV_PARAMS = {
         'epoch_length': 1000,
         'max_path_length': 1000,
         'n_epochs': int(1e3 + 1),
-        'scale_reward': 100.0,
+        'scale_reward': 300.0,
 
         'preprocessing_hidden_sizes': (128, 128, 4),
         'policy_s_t_units': 2,
@@ -76,7 +76,7 @@ ENV_PARAMS = {
         'epoch_length': 2000,
         'max_path_length': 2000,
         'n_epochs': int(1e4 + 1),
-        'scale_reward': 100.0,
+        'scale_reward': 300.0,  # TODO
 
         'preprocessing_hidden_sizes': (128, 128, 4),
         'policy_s_t_units': 2,
@@ -97,7 +97,7 @@ ENV_PARAMS = {
         'epoch_length': 1000,
         'max_path_length': 1000,
         'n_epochs': int(1e4 + 1),
-        'scale_reward': 3.0,  # Haven't sweeped this yet.
+        'scale_reward': 10.0,
 
         'preprocessing_hidden_sizes': (128, 128, 16),
         'policy_s_t_units': 8,
@@ -110,7 +110,7 @@ ENV_PARAMS = {
         'epoch_length': 2000,
         'max_path_length': 2000,
         'n_epochs': int(1e5 + 1),
-        'scale_reward': 3.0,  # Haven't sweeped this yet.
+        'scale_reward': 10.0,  # TODO
 
         'preprocessing_hidden_sizes': (128, 128, 16),
         'policy_s_t_units': 8,
@@ -131,9 +131,10 @@ ENV_PARAMS = {
         'epoch_length': 1000,
         'max_path_length': 1000,
         'n_epochs': int(2e4 + 1),
+        'scale_reward': 10.0,
+
         'preprocessing_hidden_sizes': (128, 128, 42),
         'policy_s_t_units': 21,
-        'scale_reward': 3.0,
 
         'snapshot_gap': 2000,
     },
@@ -143,7 +144,7 @@ ENV_PARAMS = {
         'epoch_length': 2000,
         'max_path_length': 2000,
         'n_epochs': int(2e5 + 1),
-        'scale_reward': 3.0,  # Haven't sweeped this yet.
+        'scale_reward': 10.0,  # TODO
 
         'preprocessing_hidden_sizes': (128, 128, 42),
         'policy_s_t_units': 21,
