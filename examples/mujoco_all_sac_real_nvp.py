@@ -83,7 +83,7 @@ ENV_PARAMS = {
 
         'snapshot_gap': 500,
 
-        'env_reward_type': ['dense', 'sparse'],
+        'env_reward_type': ['dense'],
         'env_terminate_at_goal': False,
         'env_goal_reward_weight': 3e-1,
         'env_goal_radius': 0.25,
@@ -117,7 +117,7 @@ ENV_PARAMS = {
 
         'snapshot_gap': 1000,
 
-        'env_reward_type': ['dense', 'sparse'],
+        'env_reward_type': ['dense'],
         'env_terminate_at_goal': False,
         'env_goal_reward_weight': 3e-1,
         'env_goal_radius': 0.25,
@@ -151,7 +151,7 @@ ENV_PARAMS = {
 
         'snapshot_gap': 2000,
 
-        'env_reward_type': ['dense', 'sparse'],
+        'env_reward_type': ['dense'],
         'env_terminate_at_goal': False,
         'env_goal_reward_weight': 3e-1,
         'env_goal_radius': 0.25,
