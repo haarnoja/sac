@@ -22,6 +22,7 @@ class RealNVPPolicy(NNPolicy, Serializable):
                  squash=True,
                  real_nvp_config=None,
                  observations_preprocessor=None,
+                 fix_h_on_reset=False,
                  name="real_nvp_policy"):
         """Initialize Real NVP policy.
 
@@ -39,6 +40,7 @@ class RealNVPPolicy(NNPolicy, Serializable):
         self._real_nvp_config = real_nvp_config
         self._mode = mode
         self._squash = squash
+        self._fix_h_on_reset = fix_h_on_reset
 
         self._Da = env_spec.action_space.flat_dim
         self._Ds = env_spec.observation_space.flat_dim
@@ -201,7 +203,8 @@ class RealNVPPolicy(NNPolicy, Serializable):
         return tf.trainable_variables(scope=self._scope_name)
 
     def reset(self, dones=None):
-        pass
+        if self._fix_h_on_reset:
+            self._fixed_h = self.sample_z.eval()
 
     def log_diagnostics(self, batch):
         """Record diagnostic information to the logger.
