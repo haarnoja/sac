@@ -47,6 +47,9 @@ ENV_PARAMS = {
         'preprocessing_hidden_sizes': (128, 128, 4),
         'policy_s_t_units': 2,
         'scale_reward': 300,
+        # if using 'scale_reward': 'piecewise_constant'
+        # 'scale_reward_boundaries': (100,),
+        # 'scale_reward_values': (100.0, 10.0),
     },
     'hopper': {  # 3 DoF
         'prefix': 'hopper',
@@ -204,6 +207,14 @@ def run_experiment(variant):
         real_nvp_config=real_nvp_config,
         observations_preprocessor=observations_preprocessor)
 
+    if variant['scale_reward'] == 'piecewise_constant':
+        boundaries = variant['scale_reward_boundaries']
+        values = variant['scale_reward_values']
+        scale_reward = lambda iteration: (
+            tf.train.piecewise_constant(iteration, boundaries, values))
+    else:
+        scale_reward = variant['scale_reward']
+
     algorithm = SACV2(
         base_kwargs=base_kwargs,
         env=env,
@@ -213,7 +224,7 @@ def run_experiment(variant):
         vf=vf,
         lr=variant['lr'],
         policy_lr=variant['policy_lr'],
-        scale_reward=variant['scale_reward'],
+        scale_reward=scale_reward,
         discount=variant['discount'],
         tau=variant['tau'],
         target_update_interval=variant['target_update_interval'],
