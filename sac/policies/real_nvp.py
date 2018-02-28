@@ -146,13 +146,6 @@ class RealNVPPolicy(NNPolicy, Serializable):
         self._determistic_actions = self.actions_for(self._observations_ph,
                                                      self._latents_ph)
 
-    def get_action(self, observation):
-        """Sample single action based on the observations.
-
-        TODO: if self._is_deterministic
-        """
-        return self.get_actions(observation[None])[0], {}
-
     def get_actions(self, observations):
         """Sample batch of actions based on the observations"""
 
