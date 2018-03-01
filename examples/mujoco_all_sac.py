@@ -159,7 +159,7 @@ def run_experiment(variant):
         K=variant['K'],
         hidden_layer_sizes=[M, M],
         qf=qf,
-        reg=0.001,
+        reg=1e-3,
     )
 
     algorithm = SAC(
