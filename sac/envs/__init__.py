@@ -1,5 +1,8 @@
 from .gym_env import GymEnv
-from .multi_direction_swimmer_env import MultiDirectionSwimmerEnv
+from .multi_direction_env import (
+    MultiDirectionSwimmerEnv,
+    MultiDirectionAntEnv,
+    MultiDirectionHumanoidEnv)
 from .random_goal_swimmer_env import RandomGoalSwimmerEnv
 from .random_goal_ant_env import RandomGoalAntEnv
 from .random_goal_humanoid_env import RandomGoalHumanoidEnv
@@ -9,6 +12,4 @@ from .cross_maze_ant_env import CrossMazeAntEnv
 from .simple_maze_ant_env import SimpleMazeAntEnv
 
 from .hierarchy_proxy_env import HierarchyProxyEnv
-from .multi_direction_ant_env import MultiDirectionAntEnv
-from .multi_direction_humanoid_env import MultiDirectionHumanoidEnv
 from .multigoal import MultiGoalEnv
