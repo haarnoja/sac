@@ -32,7 +32,7 @@ except:
     git_rev = None
 
 COMMON_PARAMS = {
-    'seed': [10, 11, 12, 13, 14],
+    'seed': [10, 11, 12, 13, 14, 15],
     'lr': 3e-4,
     'policy_lr': 3e-4,
     'discount': 0.99,
@@ -66,12 +66,12 @@ ENV_PARAMS = {
         'scale_reward': 100.0,
 
         # 'scale_reward': 'polynomial_decay',
-        # 'scale_reward_begin': 100.0,
-        # 'scale_reward_end': 10.0,
+        # 'scale_reward_begin': [30.0, 10.0],
+        # 'scale_reward_end': [300.0, 100.0],
 
-        # 'scale_reward': 'piecewise_constant'
-        # 'scale_reward_boundaries': (100,),
-        # 'scale_reward_values': (100.0, 10.0),
+        # 'scale_reward': 'piecewise_constant',
+        # 'scale_reward_boundaries': [(int(100e3),), (int(200e3),)],
+        # 'scale_reward_values': [(30.0, 100.0), (10.0, 100.0)],
 
         'preprocessing_hidden_sizes': (128, 128, 4),
         'policy_s_t_units': 2,
@@ -103,8 +103,8 @@ ENV_PARAMS = {
         'env_name': 'multi-direction-ant',
         'epoch_length': 1000,
         'max_path_length': 1000,
-        'n_epochs': int(1e4 + 1),
-        'scale_reward': 3.0,
+        'n_epochs': int(2e4 + 1),
+        'scale_reward': 10.0,
 
         'preprocessing_hidden_sizes': (128, 128, 16),
         'policy_s_t_units': 8,
@@ -116,20 +116,25 @@ ENV_PARAMS = {
         'env_name': 'random-goal-ant',
         'epoch_length': 1000,
         'max_path_length': 1000,
-        'n_epochs': int(1e5 + 1),
-        'scale_reward': 3.0,
+        'n_epochs': int(30e3 + 1),
+        'scale_reward': 10.0,
 
         'preprocessing_hidden_sizes': (128, 128, 16),
         'policy_s_t_units': 8,
 
-        'snapshot_gap': 1000,
+        'snapshot_gap': 2000,
 
-        'env_reward_type': ['dense'],
+        'env_reward_type': ['sparse'],
         'env_terminate_at_goal': False,
-        'env_goal_reward_weight': 3e-1,
-        'env_goal_radius': 0.25,
-        'env_goal_distance': 25,
+        'env_goal_reward_weight': [10, 30, 100],
+        'env_goal_radius': 5,
+        'env_velocity_reward_weight': 1,
+        'env_ctrl_cost_coeff': 1e-2,
+        'env_contact_cost_coeff': 1e-3,
+        'env_survive_reward': 5e-2,
+        'env_goal_distance': (10, 25),
         'env_goal_angle_range': (0, 2*np.pi),
+
     },
 
     'multi-direction-humanoid': {  # 21 DoF
