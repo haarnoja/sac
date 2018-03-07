@@ -3,7 +3,7 @@ Diversity Is All You Need (DIAYN) is a deep reinforcement learning algorithm for
 
 # Getting Started
 
-Following the installation instructions in the [README](./README.md).
+Follow the installation instructions in the [README](./README.md).
 
 ### Using Pretrained Skills
 
@@ -28,7 +28,7 @@ Training a new set of skills is as easy as running
 ```
 The following environments are currently supported: `swimmer, hopper, walker, half-cheetah, ant, humanoid, point, point-maze, inverted-pendulum, inverted-double-pendulum, mountain-car, lunar-lander, bipedal-walker`. To add a new environment, simply add a new entry to the `ENV_PARAMS` dictionary on line 54 of `mujoco_all_diayn.py`.
 The log directory specifies where checkpoints and the `progress.csv` log will be saved. Set this to `/dev/null` if you don't want to save these.
-The [rllab](https://github.com/rll/rllab) library has a script [`frontend.py`](https://github.com/rll/rllab/blob/master/rllab/viskit/frontend.py) that can be used for plotting training in real time (using the `progress.csv` log). Note that the script must be re-run every time the log is updated:
+The [rllab](https://github.com/rll/rllab) library has a script [frontend.py](https://github.com/rll/rllab/blob/master/rllab/viskit/frontend.py) that can be used for plotting training in real time (using the `progress.csv` log). Note that the script must be re-run every time the log is updated:
 ```
 > python rllab/viskit/frontend.py <progress.csv>
 ```
