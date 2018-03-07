@@ -32,7 +32,6 @@ class ValueFunction(Parameterized, Serializable):
 
     def eval(self, *inputs):
         feeds = {pl: val for pl, val in zip(self._input_pls, inputs)}
-
         return tf_utils.get_default_session().run(self._output_t, feeds)
 
     def get_params_internal(self, **tags):
@@ -49,7 +48,7 @@ class ValueFunction(Parameterized, Serializable):
 
 class NNVFunction(ValueFunction):
 
-    def __init__(self, env_spec, hidden_layer_sizes=(100, 100)):
+    def __init__(self, env_spec, hidden_layer_sizes=(100, 100), var_scope='vf'):
         Serializable.quick_init(self, locals())
 
         self._Do = env_spec.observation_space.flat_dim
@@ -60,11 +59,11 @@ class NNVFunction(ValueFunction):
         )
 
         super(NNVFunction, self).__init__(
-            'vf', (self._obs_pl,), hidden_layer_sizes)
+            var_scope, (self._obs_pl,), hidden_layer_sizes)
 
 
 class NNQFunction(ValueFunction):
-    def __init__(self, env_spec, hidden_layer_sizes=(100, 100)):
+    def __init__(self, env_spec, hidden_layer_sizes=(100, 100), var_scope='qf'):
         Serializable.quick_init(self, locals())
 
         self._Da = env_spec.action_space.flat_dim
@@ -83,4 +82,29 @@ class NNQFunction(ValueFunction):
         )
 
         super(NNQFunction, self).__init__(
-            'qf', (self._obs_pl, self._action_pl), hidden_layer_sizes)
+            var_scope, (self._obs_pl, self._action_pl), hidden_layer_sizes)
+
+class NNDiscriminatorFunction(ValueFunction):
+    def __init__(self, env_spec, hidden_layer_sizes=(100, 100), num_skills=None):
+        assert num_skills is not None
+        Serializable.quick_init(self, locals())
+        Parameterized.__init__(self)
+
+        self._Da = env_spec.action_space.flat_dim
+        self._Do = env_spec.observation_space.flat_dim
+
+        self._obs_pl = tf.placeholder(
+            tf.float32,
+            shape=[None, self._Do],
+            name='observation',
+        )
+        self._action_pl = tf.placeholder(
+            tf.float32,
+            shape=[None, self._Da],
+            name='actions',
+        )
+
+        self._name = 'discriminator'
+        self._input_pls = (self._obs_pl, self._action_pl)
+        self._layer_sizes = list(hidden_layer_sizes) + [num_skills]
+        self._output_t = self.get_output_for(*self._input_pls)

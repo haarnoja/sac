@@ -140,7 +140,17 @@ class SAC(RLAlgorithm, Serializable):
         self._init_critic_update()
         self._init_target_ops()
 
-        self._sess.run(tf.global_variables_initializer())
+        # Initialize all uninitialized variables. This prevents initializing
+        # pre-trained policy and qf and vf variables.
+        uninit_vars = []
+        for var in tf.global_variables():
+            try:
+                self._sess.run(var)
+            except tf.errors.FailedPreconditionError:
+                uninit_vars.append(var)
+        self._sess.run(tf.variables_initializer(uninit_vars))
+        # self._sess.run(tf.global_variables_initializer())
+
 
     @overrides
     def train(self):
