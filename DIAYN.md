@@ -90,6 +90,9 @@ There are many open problems raised by DIAYN. Below, we offer a list of open pro
 # Credits
 The DIAYN algorithm was developed by Benjamin Eysenbach, in collaboration with [Abhishek Gupta](https://people.eecs.berkeley.edu/~abhigupta/), [Julian Ibarz](https://research.google.com/pubs/JulianIbarz.html), and [Sergey Levine](https://people.eecs.berkeley.edu/~svlevine/). Work was completed while Benjamin was a member of the [Google AI Residency](https://research.google.com/teams/brain/residency/). We thank [Tuomas Haarnoja](https://people.eecs.berkeley.edu/~haarnoja/) for the implementation of [SAC](https://github.com/haarnoja/sac) on top of which this project is build.
 
+# Legal
+This project is released under the Apache 2.0 License. This is not an official Google product.
+
 # Reference
 ```
 @article{eysenbach2018,
