@@ -3,18 +3,18 @@ Diversity Is All You Need (DIAYN) is a deep reinforcement learning algorithm for
 
 # Getting Started
 
-Following the installation instructions in the [README](.).
+Following the installation instructions in the [README](./README.md).
 
 ### Using Pretrained Skills
 
 Every time DIAYN is run, the set of learned skills is saved in a `.pkl` file. We provide a few utilities for visualizing the learned skills.
-The script [visualize_skills.py](.) creates videos of the learned skills.
+The script [visualize_skills.py](./scripts/visualize_skills.py) creates videos of the learned skills.
 ```
 > python scripts/visualize_skills.py <CHECKPOINT.pkl>
 ```
-Use the ```--separate_videos=True``` flag to create a separate video for each skill, and use the ```--max-path-length=100``` to specify the number of steps per episode.
+Use the `--separate_videos=True` flag to create a separate video for each skill, and use the `--max-path-length=100` to specify the number of steps per episode.
 
-The script [plot_traces.py](.) plots the location of the agent throughout an episode.
+The script [plot_traces.py](./scripts/plot_traces.py) plots the location of the agent throughout an episode.
 ```
 > python scripts/plot_traces.py <CHECKPOINT.pkl>
 ```
@@ -26,9 +26,9 @@ Training a new set of skills is as easy as running
 ```
 > python examples/mujoco_all_diayn.py --env=<ENV> --log_dir=<LOG_DIR>
 ```
-The following environments are currently supported: ```swimmer, hopper, walker, half-cheetah, ant, humanoid, point, point-maze, inverted-pendulum, inverted-double-pendulum, mountain-car, lunar-lander, bipedal-walker```. To add a new environment, simply add a new entry to the ```ENV_PARAMS``` dictionary on line 54 of ```mujoco_all_diayn.py```.
-The log directory specifies where checkpoints and the ```progress.csv``` log will be saved. Set this to ```/dev/null``` if you don't want to save these.
-The [rllab]() library has a script [frontend.py]() that can be used for plotting training in real time (using the progress.csv log). Note that the script must be re-run every time the log is updated:
+The following environments are currently supported: `swimmer, hopper, walker, half-cheetah, ant, humanoid, point, point-maze, inverted-pendulum, inverted-double-pendulum, mountain-car, lunar-lander, bipedal-walker`. To add a new environment, simply add a new entry to the `ENV_PARAMS` dictionary on line 54 of `mujoco_all_diayn.py`.
+The log directory specifies where checkpoints and the `progress.csv` log will be saved. Set this to `/dev/null` if you don't want to save these.
+The [rllab](https://github.com/rll/rllab) library has a script [`frontend.py`](https://github.com/rll/rllab/blob/master/rllab/viskit/frontend.py) that can be used for plotting training in real time (using the `progress.csv` log). Note that the script must be re-run every time the log is updated:
 ```
 > python rllab/viskit/frontend.py <progress.csv>
 ```
@@ -59,7 +59,7 @@ experiment_dir/
 
 To run the finetuning experiment:
 ```
-> python examples/mujoco_all_diayn_finetune.py --env=<ENV> --snapshot_dir=<expertiment_dir> --log_dir=<log_dir>
+> python examples/mujoco_all_diayn_finetune.py --env=<ENV> --snapshot_dir=<experiment_dir> --log_dir=<log_dir>
 ```
 
 ### New Experiments?
@@ -69,20 +69,20 @@ Feel free to modify any part of the code to test new hypotheses and find better 
 
 # Open Problems
 
-There are many open problems raised by DIAYN. Below, we offer a list of open problems. If interested in working on any of these, feel free to reach out to eysenbach@google.com.
+There are many open problems raised by DIAYN. Below, we offer a list of open problems. If interested in working on any of these, feel free to reach out to <eysenbach@google.com>.
 
-### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Easy
-1. Try running DIAYN on a new environment. Some good candidates are the environments in [Roboschool]() and the [Box2D](https://github.com/openai/gym/tree/master/gym/envs/box2d) environments in Gym, and the environments in [pybullet](https://github.com/bulletphysics/bullet3). Send GIFs of trained skills to eysenbach@google.com for inclusion in the project website (we ensure you get credited).
+### Easy
+1. Try running DIAYN on a new environment. Some good candidates are the environments in [roboschool](https://github.com/openai/roboschool) and the [Box2D](https://github.com/openai/gym/tree/master/gym/envs/box2d) environments in Gym, and the environments in [pybullet](https://github.com/bulletphysics/bullet3). Send GIFs of trained skills to <eysenbach@google.com> for inclusion in the project website (we ensure you get credited).
 2. Use pretrained skills to create a robot that dances to some song.
 3. Use pretrained skills to create a game, where the human player decides which skill to use.
 
   ### Medium
-4. There is a chicken-and-egg dilema in DIAYN: skills learn to be diverse by using the discriminator's decision function, but the discriminator cannot learn to discriminate skills if they are not diverse. We found that synchronous updates of the policy and discriminator worked well enough for our experiments. We expect that more careful balancing of discriminator and policy updates would accelerate learning, leading to more diverse states. A first step in this direction is to modify the training loop to do N discriminator updates for every M policy updates, where N and M are tuneable hyperparameters.
-5. While DIAYN was developed on top of [Soft Actor Critic](), it could be applied on top of any RL algorithm. What are the benefits and limitations of applying DIAYN on top of (say) [PPO](https://arxiv.org/abs/1707.06347) and [Evolutionary Strategies](https://arxiv.org/abs/1703.03864)?
-6. In preliminary experiments, we tried using a continuous prior distribution p(z). Neither a uniform nor Gaussian prior distribution allowed us to learn skills as well as a Categorical prior. Can continuous priors be made to work? One initial idea is to use a Dirichlet distribution as the prior, as the Dirichlet can interpolate between a categorical distribution (which we know works) and a uniform distribution (which doesn't work yet).
+4. There is a chicken-and-egg dilemma in DIAYN: skills learn to be diverse by using the discriminator's decision function, but the discriminator cannot learn to discriminate skills if they are not diverse. We found that synchronous updates of the policy and discriminator worked well enough for our experiments. We expect that more careful balancing of discriminator and policy updates would accelerate learning, leading to more diverse states. A first step in this direction is to modify the training loop to do N discriminator updates for every M policy updates, where N and M are tuneable hyperparameters.
+5. While DIAYN was developed on top of [Soft Actor Critic](https://arxiv.org/abs/1801.01290), it could be applied on top of any RL algorithm. What are the benefits and limitations of applying DIAYN on top of (say) [PPO](https://arxiv.org/abs/1707.06347) and [Evolutionary Strategies](https://arxiv.org/abs/1703.03864)?
+6. In preliminary experiments, we tried using a continuous prior distribution p(z). Neither a uniform nor Gaussian prior distribution allowed us to learn skills as well as a Categorical prior. Can continuous priors be made to work? One initial idea is to use a [Dirichlet distribution](https://en.wikipedia.org/wiki/Dirichlet_distribution) as the prior, as the Dirichlet can interpolate between a categorical distribution (which we know works) and a uniform distribution (which doesn't work yet).
 
   ### Hard
-7. Can skills discovered by used for hierarchical reinforcement learning? We suspect that answer is yes, but have not yet gotten it working. An good first step would be to learn a meta-policy whose actions are the choose which skill to use for the next (say) 100 steps.
+7. Can skills discovered by used for hierarchical reinforcement learning? We suspect that answer is yes, but have not yet gotten it working. A good first step would be to learn a meta-policy that chooses which skill to use for the next (say) 100 steps.
 8. Can we "evolve" an expanding set of diverse skills? In our experiments, we fixed the number of skills apriori, and sampled uniformly from this distribution during training. Taking inspiration from evolutionary algorithms, we might be able to learn a set of skills that expands over time. One approach is to start with two skills, and add a new skill every time the existing skills are sufficiently distinguishable.
 9. Can new skills be initialized more intelligently? In our experiments, we randomly initialize a skill the first time it is used. An alternative would be to initialize the new skill with whatever existing skill is currently most distinguishable. This has the interpretation of doing a tree-search, where the most diverse leaf is split in two.
 10. How can large scale, distributed training more quickly learn a large set of more diverse skills? A straightforward method for applying DIAYN in the distributed setting is to send a discriminator to each worker, and have each working independently learn a set of diverse skills. The skills are then aggregated by a central coordinator, which learns a new global discriminator. The new discriminator is sent to each worker, and the process is repeated.
