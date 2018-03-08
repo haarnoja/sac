@@ -46,28 +46,5 @@ def _softmax(x):
     exp_x = np.exp(x - max_x)
     return exp_x / np.sum(exp_x)
 
-def get_snapshots(snapshot_dir, num_seeds):
-    """Returns a list of filenames of the most recent snapshot."""
-    snapshots = []
-    for subfolder in os.listdir(snapshot_dir):
-        # Ignore the directories from the imitation experiments
-        if subfolder.startswith('STUDENT'):
-            continue
-        max_itr = 0
-        max_snapshot = None
-        for snapshot in os.listdir(os.path.join(snapshot_dir, subfolder)):
-            if snapshot.startswith('itr_') and snapshot.endswith('.pkl'):
-                itr = int(os.path.splitext(snapshot)[0].split('_')[-1])
-                if itr > max_itr:
-                    max_snapshot = os.path.join(snapshot_dir, subfolder,
-                                                snapshot)
-                    max_itr = itr
-        snapshots.append(max_snapshot)
-    if num_seeds is None:
-        return snapshots
-    else:
-        return snapshots[:num_seeds]
-
-
 PROJECT_PATH = os.path.dirname(
     os.path.realpath(os.path.join(__file__, '..', '..')))

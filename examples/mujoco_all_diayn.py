@@ -39,10 +39,6 @@ SHARED_PARAMS = {
     'scale_entropy': 0.1,
     'include_actions': False,
     'learn_p_z': False,
-    'plateau_reset': False,
-    'eval_all_skills': False,
-    'learn_p_s': False,
-    'scale_log_p_s': False,
     'add_p_z': True,
 }
 
@@ -239,14 +235,9 @@ def run_experiment(variant):
         discount=variant['discount'],
         tau=variant['tau'],
         num_skills=variant['num_skills'],
-        video_dir=variant['video_dir'],
         save_full_state=False,
         include_actions=variant['include_actions'],
         learn_p_z=variant['learn_p_z'],
-        plateau_reset=variant['plateau_reset'],
-        eval_all_skills=variant['eval_all_skills'],
-        learn_p_s=variant['learn_p_s'],
-        scale_log_p_s=variant['scale_log_p_s'],
         add_p_z=variant['add_p_z'],
     )
 
@@ -259,7 +250,6 @@ def launch_experiments(variant_generator):
     for i, variant in enumerate(variants):
         tag = '__'.join(['%s_%s' % (key, variant[key]) for key in TAG_KEYS])
         log_dir = os.path.join(args.log_dir, tag)
-        variant['video_dir'] = os.path.join(log_dir, 'videos')
         print('Launching {} experiments.'.format(len(variants)))
         run_sac_experiment(
             run_experiment,

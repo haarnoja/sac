@@ -10,7 +10,7 @@ from sac.algos import SAC
 from sac.envs.meta_env import FixedOptionEnv
 from sac.misc.instrument import run_sac_experiment
 from sac.misc.sampler import rollouts
-from sac.misc.utils import timestamp, get_snapshots
+from sac.misc.utils import timestamp
 from sac.policies.hierarchical_policy import FixedOptionPolicy
 from sac.replay_buffers import SimpleReplayBuffer
 from sac.value_functions import NNQFunction, NNVFunction
@@ -148,9 +148,7 @@ def parse_args():
     parser.add_argument('--exp_name', type=str, default=timestamp())
     parser.add_argument('--mode', type=str, default='local')
     parser.add_argument('--log_dir', type=str, default=None)
-    parser.add_argument('--snapshot_dir', type=str, default=None)
-    # Argument num_seeds is an upper bound on number of jobs launched.
-    parser.add_argument('--num_seeds', type=int, default=None)
+    parser.add_argument('--snapshot', type=str, default=None)
     args = parser.parse_args()
 
     return args
@@ -166,8 +164,7 @@ def get_variants(args):
             vg.add(key, val)
         else:
             vg.add(key, [val])
-    vg.add('snapshot_filename', get_snapshots(args.snapshot_dir, args.num_seeds))
-
+    vg.add('snapshot_filename', [args.snapshot])
     return vg
 
 
@@ -264,6 +261,7 @@ def launch_experiments(variant_generator):
 
     for i, variant in enumerate(variants):
         tag = 'finetune__'
+        print(variant['snapshot_filename'])
         tag += variant['snapshot_filename'].split('/')[-2]
         tag += '____'
         tag += '__'.join(['%s_%s' % (key, variant[key]) for key in TAG_KEYS])

@@ -444,7 +444,6 @@ class DIAYN(SAC):
                         for i in range(self._n_train_repeat):
                             batch = self._pool.random_batch(self._batch_size)
                             self._do_training(iteration, batch)
-                        self._train_discriminator()
 
                     gt.stamp('train')
 

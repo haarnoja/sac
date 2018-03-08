@@ -6,7 +6,6 @@ import os
 from sac.misc import utils
 from sac.policies.hierarchical_policy import FixedOptionPolicy
 from sac.misc.sampler import rollouts
-from sac.envs.pretty_env import PrettyHalfCheetahEnv, PrettyAntEnv, PrettyHopperEnv
 
 
 if __name__ == "__main__":
@@ -19,19 +18,13 @@ if __name__ == "__main__":
                         action='store_true')
     parser.add_argument('--no-deterministic', '-nd', dest='deterministic',
                         action='store_false')
-    parser.add_argument('--pretty', type=bool, default=False)
     parser.add_argument('--separate_videos', type=bool, default=False)
     parser.set_defaults(deterministic=True)
 
     args = parser.parse_args()
-    if args.pretty:
-        filename = os.path.splitext(args.file)[0] + '_pretty.avi'
-        best_filename = os.path.splitext(args.file)[0] + '_best_pretty.avi'
-        worst_filename = os.path.splitext(args.file)[0] + '_worst_pretty.avi'
-    else:
-        filename = os.path.splitext(args.file)[0] + '.avi'
-        best_filename = os.path.splitext(args.file)[0] + '_best.avi'
-        worst_filename = os.path.splitext(args.file)[0] + '_worst.avi'
+    filename = os.path.splitext(args.file)[0] + '.avi'
+    best_filename = os.path.splitext(args.file)[0] + '_best.avi'
+    worst_filename = os.path.splitext(args.file)[0] + '_worst.avi'
 
     path_list = []
     reward_list = []
@@ -40,17 +33,6 @@ if __name__ == "__main__":
         data = joblib.load(args.file)
         policy = data['policy']
         env = data['env']
-        if args.pretty:
-            env_name = env.wrapped_env.env.__class__.__name__
-            pretty_envs = {
-                'HalfCheetahEnv': PrettyHalfCheetahEnv,
-                'AntEnv': PrettyAntEnv,
-                'HopperEnv': PrettyHopperEnv,
-            }
-            if env_name in pretty_envs:
-                env = pretty_envs[env_name]()
-            else:
-                raise ValueError('Pretty version does not exist for %s' % env_name)
         num_skills = data['policy'].observation_space.flat_dim - data['env'].spec.observation_space.flat_dim
 
         with policy.deterministic(args.deterministic):
@@ -65,10 +47,7 @@ if __name__ == "__main__":
 
                 if args.separate_videos:
                     base = os.path.splitext(args.file)[0]
-                    if args.pretty:
-                        end = '_skill_%02d_pretty.avi' % z
-                    else:
-                        end = '_skill_%02d.avi' % z
+                    end = '_skill_%02d.avi' % z
                     skill_filename = base + end
                     utils._save_video(new_paths, skill_filename)
 

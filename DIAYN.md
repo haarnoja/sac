@@ -10,13 +10,17 @@ Follow the installation instructions in the [README](./README.md).
 Every time DIAYN is run, the set of learned skills is saved in a `.pkl` file. We provide a few utilities for visualizing the learned skills.
 The script [visualize_skills.py](./scripts/visualize_skills.py) creates videos of the learned skills.
 ```
-> python scripts/visualize_skills.py <CHECKPOINT.pkl>
+# Usage: python scripts/visualize_skills.py <snapshot.pkl>
+
+python scripts/visualize_skills.py data/demo/half_cheetah/seed_1/itr_3000.pkl
 ```
 Use the `--separate_videos=True` flag to create a separate video for each skill, and use the `--max-path-length=100` to specify the number of steps per episode.
 
 The script [plot_traces.py](./scripts/plot_traces.py) plots the location of the agent throughout an episode.
 ```
-> python scripts/plot_traces.py <CHECKPOINT.pkl>
+# Usage: python scripts/plot_traces.py <snapshot.pkl>
+
+python scripts/plot_traces.py data/demo/half_cheetah/seed_1/itr_3000.pkl
 ```
 Additional flags allow the user to choose the number of rollouts per skill, the length of each rollout, and which dimensions of the state to plot.
 
@@ -24,21 +28,28 @@ Additional flags allow the user to choose the number of rollouts per skill, the 
 
 Training a new set of skills is as easy as running
 ```
-> python examples/mujoco_all_diayn.py --env=<ENV> --log_dir=<LOG_DIR>
+# Usage: python examples/mujoco_all_diayn.py --env=<ENV> --log_dir=<LOG_DIR>
+
+python examples/mujoco_all_diayn.py --env=half-cheetah --log_dir=data/demo
 ```
 The following environments are currently supported: `swimmer, hopper, walker, half-cheetah, ant, humanoid, point, point-maze, inverted-pendulum, inverted-double-pendulum, mountain-car, lunar-lander, bipedal-walker`. To add a new environment, simply add a new entry to the `ENV_PARAMS` dictionary on line 54 of `mujoco_all_diayn.py`.
 The log directory specifies where checkpoints and the `progress.csv` log will be saved. Set this to `/dev/null` if you don't want to save these.
 The [rllab](https://github.com/rll/rllab) library has a script [frontend.py](https://github.com/rll/rllab/blob/master/rllab/viskit/frontend.py) that can be used for plotting training in real time (using the `progress.csv` log). Note that the script must be re-run every time the log is updated:
 ```
-> python rllab/viskit/frontend.py <progress.csv>
+# Usage: python rllab/viskit/frontend.py <progress.csv>
+
+python rllab/viskit/frontend.py data/demo/half_cheetah/seed_1/progress.csv
 ```
 
 ### Imitation Experiment
 
 The imitation learning experiments require two checkpoints (`.pkl` files), one to use as the expert and another to use as the student. To run the imitation experiment:
 ```
-> python scripts/imitate_skills.py --expert_snapshot=<expert.pkl> --student_snapshot=<student.pkl>
+# Usage: python scripts/imitate_skills.py --expert_snapshot=<expert.pkl> --student_snapshot=<student.pkl>
+
+python scripts/imitate_skills.py --expert_snapshot=data/demo/half_cheetah/seed_1/itr_2500.pkl --student_snapshot=data/demo/half_cheetah/seed_2/itr_2500.pkl
 ```
+
 This script saves a JSON file storing the results of the experiment:
 * `M` - A 2D array with size (num. expert skills X num. student skills). Entry `M[i, j]` is the predicted probability that student skill `j` matches expert skill `i`.
 * `L` - A 2D array with size (num. expert skills X num. student skills). Entry `L[i, j]` is a *list* of the log-probability that student skill `j` matches expert skill `i` at every step in a rollout. Note that rollouts may have different lengths, so do not attempt to reshape `L` into a 3D tensor.
@@ -46,20 +57,11 @@ This script saves a JSON file storing the results of the experiment:
 
 ### Finetuning Experiment
 
-The finetuning experiments require a folder with checkpoints to use as initialization. In particular, we assume the file structure is as below. `run_1` might be something like `seed_1__num_skills_20`
+The finetuning experiments require a checkpoint of saved skills to use as initialization. To run the finetuning experiment:
 ```
-experiment_dir/
-  run_1/
-    itr_100.pkl
-    itr_200.pkl
-  run_2/
-    itr_100.pkl
-  ...
-```
+# Usage: python examples/mujoco_all_diayn_finetune.py --env=<ENV> --snapshot=<snapshot.pkl> --log_dir=<log_dir>
 
-To run the finetuning experiment:
-```
-> python examples/mujoco_all_diayn_finetune.py --env=<ENV> --snapshot_dir=<experiment_dir> --log_dir=<log_dir>
+python examples/mujoco_all_diayn_finetune.py --env=half-cheetah --snapshot=data/demo/half_cheetah/seed_1/itr_2500.pkl --log_dir=data/finetune/half_cheetah
 ```
 
 ### New Experiments?
