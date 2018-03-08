@@ -1,4 +1,4 @@
-# Diversity Is All You Need (DIAYN)
+"""Diversity Is All You Need (DIAYN)"""
 
 from rllab.core.serializable import Serializable
 from rllab.misc import logger
@@ -37,23 +37,15 @@ class DIAYN(SAC):
                  tau=0.01,
                  num_skills=20,
                  save_full_state=False,
-                 optimize_meta_policy_interval=100,
-                 train_hierarchical_n_epochs=10,
-                 video_dir=None,
-                 save_video_n_epochs=20,
+                 find_best_skill_interval=10,
+                 best_skill_n_rollouts=10,
                  learn_p_z=False,
                  include_actions=False,
-                 plateau_reset=False,
-                 eval_all_skills=False,
-                 learn_p_s=False,
-                 scale_log_p_s=False,
-                 add_p_z=True,
-                 n_train_repeat_discriminator=1):
+                 add_p_z=True):
         """
         Args:
             base_kwargs (dict): dictionary of base arguments that are directly
                 passed to the base `RLAlgorithm` constructor.
-
             env (`rllab.Env`): rllab environment object.
             policy: (`rllab.NNPolicy`): A policy function approximator.
             discriminator: (`rllab.NNPolicy`): A discriminator for z.
@@ -62,20 +54,20 @@ class DIAYN(SAC):
             pool (`PoolBase`): Replay buffer to add gathered samples to.
             plotter (`QFPolicyPlotter`): Plotter instance to be used for
                 visualizing Q-function during training.
-
             lr (`float`): Learning rate used for the function approximators.
             scale_entropy (`float`): Scaling factor for entropy.
             discount (`float`): Discount factor for Q-function updates.
             tau (`float`): Soft value function target update weight.
             num_skills (`int`): Number of skills/options to learn.
-            optimize_meta_policy_interval (`int`): How often to recompute
-                the meta policies.
-            train_hierarchical_n_epochs (`int`): Number of epochs to train
-                the hierarchical policy.
-            video_dir (`str`): Folder for saving videos.
-            save_video_n_epochs (`int`): How often to save videos.
             save_full_state (`bool`): If True, save the full class in the
                 snapshot. See `self.get_snapshot` for more information.
+            find_best_skill_interval (`int`): How often to recompute the best
+                skill.
+            best_skill_n_rollouts (`int`): When finding the best skill, how
+                many rollouts to do per skill.
+            include_actions (`bool`): Whether to pass actions to the
+                discriminator.
+            add_p_z (`bool`): Whether th include log p(z) in the pseudo-reward.
         """
 
         Serializable.quick_init(self, locals())
@@ -93,26 +85,17 @@ class DIAYN(SAC):
         self._discriminator_lr = lr
         self._qf_lr = lr
         self._vf_lr = lr
-        self._p_s_lr = lr
         self._scale_entropy = scale_entropy
         self._discount = discount
         self._tau = tau
         self._num_skills = num_skills
         self._p_z = np.full(num_skills, 1.0 / num_skills)
-        self._optimize_meta_policy_interval = optimize_meta_policy_interval
-        self._train_hierarchical_n_epochs = train_hierarchical_n_epochs
-        self._video_dir = video_dir
-        self._save_video_n_epochs = save_video_n_epochs
+        self._find_best_skill_interval = find_best_skill_interval
+        self._best_skill_n_rollouts = best_skill_n_rollouts
         self._learn_p_z = learn_p_z
         self._save_full_state = save_full_state
         self._include_actions = include_actions
-        self._plateau_reset = plateau_reset
-        self._eval_all_skills = eval_all_skills
-        self._learn_p_s = learn_p_s
-        self._scale_log_p_s = scale_log_p_s
         self._add_p_z = add_p_z
-        self._n_train_repeat_discriminator = n_train_repeat_discriminator
-
 
         self._Da = self._env.action_space.flat_dim
         self._Do = self._env.observation_space.flat_dim
@@ -120,11 +103,6 @@ class DIAYN(SAC):
         self._training_ops = list()
 
         self._init_placeholders()
-
-        (self._log_p_s, p_s_vars) = self._get_log_p_s()
-        if self._learn_p_s:
-            self._init_p_s_update(p_s_vars)
-
         self._init_actor_update()
         self._init_critic_update()
         self._init_discriminator_update()
@@ -209,11 +187,6 @@ class DIAYN(SAC):
         if self._add_p_z:
             reward_pl -= log_p_z
             reward_pl = tf.check_numerics(reward_pl, 'Check numerics: reward_pl')
-        if self._learn_p_s:
-            if self._scale_log_p_s:
-                reward_pl -= self._scale_entropy * self._log_p_s
-            else:
-                reward_pl -= self._log_p_s
         self._reward_pl = reward_pl
 
         with tf.variable_scope('target'):
@@ -305,34 +278,6 @@ class DIAYN(SAC):
         self._training_ops.append(discriminator_train_op)
 
 
-    def _get_log_p_s(self):
-        (obs, z_one_hot) = self._split_obs()
-
-        mu_matrix = tf.get_variable(name='p_s_mu',
-                                    shape=(self._num_skills, self._Do),
-                                    dtype=tf.float32,
-                                    initializer=tf.zeros_initializer())
-        log_std_matrix = tf.get_variable(name='p_s_std',
-                                         shape=(self._num_skills, self._Do),
-                                         dtype=tf.float32,
-                                         initializer=tf.ones_initializer())
-        mu = tf.matmul(z_one_hot, mu_matrix)
-        std = tf.exp(tf.matmul(z_one_hot, log_std_matrix) + EPS)
-        dist = tf.distributions.Normal(loc=mu, scale=std)
-        log_p_s = tf.reduce_sum(dist.log_prob(obs), axis=1)
-        var_list = [mu_matrix, log_std_matrix]
-        return (log_p_s, var_list)
-
-    def _init_p_s_update(self, p_s_vars):
-        """Learn the distribution over states for each skill."""
-        optimizer = tf.train.AdamOptimizer(self._p_s_lr)
-        p_s_train_op = optimizer.minimize(
-            loss=-1 * self._log_p_s,
-            var_list=p_s_vars,
-        )
-        self._training_ops.append(p_s_train_op)
-
-
     def _get_feed_dict(self, batch):
         """Construct TensorFlow feed_dict from sample batch."""
 
@@ -352,7 +297,7 @@ class DIAYN(SAC):
         for z in range(self._num_skills):
             fixed_z_policy = FixedOptionPolicy(self._policy, self._num_skills, z)
             paths = rollouts(self._eval_env, fixed_z_policy,
-                             self._max_path_length, self._train_hierarchical_n_epochs,
+                             self._max_path_length, self._best_skill_n_rollouts,
                              render=False)
             total_returns = np.mean([path['rewards'].sum() for path in paths])
             if total_returns > best_returns:
@@ -389,7 +334,7 @@ class DIAYN(SAC):
         if self._eval_n_episodes < 1:
             return
 
-        if epoch % self._optimize_meta_policy_interval == 0:
+        if epoch % self._find_best_skill_interval == 0:
             self._single_option_policy = self._get_best_single_option_policy()
         for (policy, policy_name) in [(self._single_option_policy, 'best_single_option_policy')]:
             with logger.tabular_prefix(policy_name + '/'), logger.prefix(policy_name + '/'):
@@ -414,26 +359,7 @@ class DIAYN(SAC):
                 logger.record_tabular('episode-length-max', np.max(episode_lengths))
                 logger.record_tabular('episode-length-std', np.std(episode_lengths))
 
-                if self._eval_all_skills:
-                    print('Evaluating all skills')
-                    for z in range(self._num_skills):
-                        fixed_z_policy = FixedOptionPolicy(self._policy, self._num_skills, z)
-                        paths = rollouts(self._eval_env, fixed_z_policy,
-                                         self._max_path_length, self._eval_n_episodes)
-                        total_returns = [path['rewards'].sum() for path in paths]
-                        logger.record_tabular('return-average-skill-%d' % z,
-                                              np.mean(total_returns))
-
-
-
                 self._eval_env.log_diagnostics(paths)
-                if self._eval_render and epoch % self._save_video_n_epochs == 0:
-                    filename = os.path.join(self._video_dir,
-                                            '%09d-%s.avi' % (epoch, policy_name))
-                    self._save_video(paths, filename)
-
-        filename = os.path.join(self._video_dir,
-                                'paths', '%09d.png' % epoch)
 
         batch = self._pool.random_batch(self._batch_size)
         self.log_diagnostics(batch)
@@ -473,8 +399,7 @@ class DIAYN(SAC):
 
                     action, _ = policy.get_action(aug_obs)
 
-                    # Record log p(z | s, a) for
-                    if self._learn_p_z or self._plateau_reset:
+                    if self._learn_p_z:
                         (obs, _) = utils.split_aug_obs(aug_obs, self._num_skills)
                         feed_dict = {self._discriminator._obs_pl: obs[None],
                                      self._discriminator._action_pl: action[None]}
@@ -483,8 +408,6 @@ class DIAYN(SAC):
                         log_p_z = np.log(utils._softmax(logits)[z])
                         if self._learn_p_z:
                             log_p_z_list[z].append(log_p_z)
-                        if self._plateau_reset:
-                            log_p_z_episode.append(log_p_z)
 
                     next_ob, reward, terminal, info = env.step(action)
                     aug_next_ob = utils.concat_obs_z(next_ob, z,
@@ -500,13 +423,7 @@ class DIAYN(SAC):
                         aug_next_ob,
                     )
 
-                    window = 20
-                    if self._plateau_reset and len(log_p_z_episode) > window:
-                        var = np.var(log_p_z_episode[-window:])
-                        var_cond = var < 1e-6
-                    else:
-                        var_cond = False
-                    if terminal or path_length >= self._max_path_length or var_cond:
+                    if terminal or path_length >= self._max_path_length:
                         path_length_list.append(path_length)
                         observation = env.reset()
                         policy.reset()
@@ -590,7 +507,6 @@ class DIAYN(SAC):
             ('policy-reg-loss', self._policy_dist.reg_loss_t),
             ('discriminator_reward', self._reward_pl),
             ('log_p_z', self._log_p_z),
-            ('log_p_s', self._log_p_s),
         ]
         log_ops = [op for (name, op) in log_pairs]
         log_names = [name for (name, op) in log_pairs]

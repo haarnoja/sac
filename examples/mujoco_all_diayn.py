@@ -1,4 +1,3 @@
-
 """Script for launching DIAYN experiments.
 
 Usage:
@@ -23,7 +22,7 @@ import os
 
 
 SHARED_PARAMS = {
-    'seed': [1, 2, 3],
+    'seed': [1],
     'lr': 3E-4,
     'discount': 0.99,
     'tau': 0.01,
@@ -44,7 +43,6 @@ SHARED_PARAMS = {
     'eval_all_skills': False,
     'learn_p_s': False,
     'scale_log_p_s': False,
-    'optimize_meta_policy_interval': 100,
     'add_p_z': True,
 }
 
@@ -248,7 +246,6 @@ def run_experiment(variant):
         plateau_reset=variant['plateau_reset'],
         eval_all_skills=variant['eval_all_skills'],
         learn_p_s=variant['learn_p_s'],
-        optimize_meta_policy_interval=variant['optimize_meta_policy_interval'],
         scale_log_p_s=variant['scale_log_p_s'],
         add_p_z=variant['add_p_z'],
     )

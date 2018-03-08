@@ -56,7 +56,6 @@ class RandomOptionPolicy(object):
         return self._base_policy.get_action(aug_obs)
 
 class HierarchicalPolicy(object):
-    # TODO(eysenbach): do we want to meta policy to also be MaxEnt?
     def __init__(self, base_policy, num_skills, meta_policy, steps_per_option):
         self._steps_per_option = steps_per_option
         self._meta_policy = meta_policy
