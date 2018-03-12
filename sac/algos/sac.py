@@ -149,7 +149,6 @@ class SAC(RLAlgorithm, Serializable):
             except tf.errors.FailedPreconditionError:
                 uninit_vars.append(var)
         self._sess.run(tf.variables_initializer(uninit_vars))
-        # self._sess.run(tf.global_variables_initializer())
 
 
     @overrides

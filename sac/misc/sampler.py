@@ -1,5 +1,5 @@
-import time
 import numpy as np
+import time
 
 
 def rollout(env, policy, path_length, render=False, speedup=10, callback=None,
