@@ -1,5 +1,4 @@
 import argparse
-import os
 
 from rllab.envs.normalized_env import normalize
 from rllab.misc.instrument import VariantGenerator
@@ -19,7 +18,7 @@ SHARED_PARAMS = {
     "discount": 0.99,
     "tau": 0.01,
     "K": 4,
-    "layer_size": 300, # TODO originally 128
+    "layer_size": 128,
     "batch_size": 128,
     "max_pool_size": 1E6,
     "n_train_repeat": 1,
@@ -28,8 +27,6 @@ SHARED_PARAMS = {
     "snapshot_gap": 100,
     "sync_pkl": True,
 }
-
-TAG_KEYS = ['seed']
 
 
 ENV_PARAMS = {
@@ -76,14 +73,6 @@ ENV_PARAMS = {
         'n_epochs': 20000,
         'scale_reward': 3,
     },
-    'inverted-pendulum': {
-        'prefix': 'inverted-pendulum',
-        'env_name': 'InvertedPendulum-v1',
-        'max_path_length': 1000,
-        'n_epochs': 1000,
-        'scale_reward': 1,
-    },
-
 }
 DEFAULT_ENV = 'swimmer'
 AVAILABLE_ENVS = list(ENV_PARAMS.keys())
@@ -186,8 +175,6 @@ def launch_experiments(variant_generator):
     variants = variant_generator.variants()
 
     for i, variant in enumerate(variants):
-        tag = '__'.join(['%s_%s' % (key, variant[key]) for key in TAG_KEYS])
-        log_dir = os.path.join(args.log_dir, tag)
         print('Launching {} experiments.'.format(len(variants)))
         run_sac_experiment(
             run_experiment,
@@ -198,7 +185,7 @@ def launch_experiments(variant_generator):
             n_parallel=1,
             seed=variant['seed'],
             terminate_machine=True,
-            log_dir=log_dir,
+            log_dir=args.log_dir,
             snapshot_mode=variant['snapshot_mode'],
             snapshot_gap=variant['snapshot_gap'],
             sync_s3_pkl=variant['sync_pkl'],
