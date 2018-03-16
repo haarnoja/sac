@@ -129,11 +129,6 @@ class CouplingBijector(ConditionalBijector):
         exp_scale = tf.check_numerics(
             tf.exp(scale), "tf.exp(scale) contains NaNs or infs")
 
-        if condition_kwargs.get('regularize', False):
-            tf.add_to_collection(
-                tf.GraphKeys.REGULARIZATION_LOSSES,
-                self.scale_regularization * tf.reduce_mean(exp_scale))
-
         # y_{d+1:D} = x_{d+1:D} * exp(s(x_{1:d})) + t(x_{1:d})
         part_1 = masked_x
         part_2 = non_masked_x * exp_scale + translation
@@ -145,6 +140,15 @@ class CouplingBijector(ConditionalBijector):
         )
 
         outputs = tf.concat(to_concat, axis=1)
+
+        if (condition_kwargs.get('regularize', False)
+            and self.scale_regularization > 0):
+            prior = tf.contrib.distributions.MultivariateNormalDiag(
+                loc=tf.zeros(D), scale_diag=tf.ones(D))
+            prior_log_probs = prior.log_prob(outputs)
+            tf.add_to_collection(
+                tf.GraphKeys.REGULARIZATION_LOSSES,
+                self.scale_regularization * prior_log_probs)
 
         return outputs
 
@@ -201,10 +205,6 @@ class CouplingBijector(ConditionalBijector):
                                               non_masked_y.shape[-1])
 
         exp_scale = tf.exp(-scale)
-        if condition_kwargs.get('regularize', False):
-            tf.add_to_collection(
-                tf.GraphKeys.REGULARIZATION_LOSSES,
-                self.scale_regularization * tf.reduce_mean(exp_scale))
 
         # y_{d+1:D} = (y_{d+1:D} - t(y_{1:d})) * exp(-s(y_{1:d}))
         part_1 = masked_y
@@ -217,6 +217,15 @@ class CouplingBijector(ConditionalBijector):
         )
 
         outputs = tf.concat(to_concat, axis=1)
+
+        if (condition_kwargs.get('regularize', False)
+            and self.scale_regularization > 0):
+            prior = tf.contrib.distributions.MultivariateNormalDiag(
+                loc=tf.zeros(D), scale_diag=tf.ones(D))
+            prior_log_probs = prior.log_prob(outputs)
+            tf.add_to_collection(
+                tf.GraphKeys.REGULARIZATION_LOSSES,
+                self.scale_regularization * prior_log_probs)
 
         return outputs
 
