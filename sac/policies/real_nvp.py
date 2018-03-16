@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 
 from rllab.core.serializable import Serializable
+from rllab.misc import logger
 
 from sac.distributions import RealNVPBijector
 from sac.policies import NNPolicy
@@ -58,7 +59,7 @@ class RealNVPPolicy(NNPolicy, Serializable):
 
     def actions_for(self, observations, latents=None,
                     name=None, reuse=tf.AUTO_REUSE, with_log_pis=False,
-                    regularize=False):
+                    regularize=False, with_raw_actions=False):
         name = name or self.name
 
         with tf.variable_scope(name, reuse=reuse):
@@ -86,6 +87,10 @@ class RealNVPPolicy(NNPolicy, Serializable):
         if with_log_pis:
             log_pis = self.log_pis_for(
                 conditions, raw_actions, name=name, reuse=reuse)
+
+            if with_raw_actions:
+                return raw_actions, actions, log_pis
+
             return actions, log_pis
 
         return actions
@@ -136,7 +141,8 @@ class RealNVPPolicy(NNPolicy, Serializable):
             name='latents',
         )
 
-        self._actions = self.actions_for(self._observations_ph)
+        self._raw_actions, self._actions, self._log_pis = self.actions_for(
+            self._observations_ph, with_log_pis=True, with_raw_actions=True)
         self._determistic_actions = self.actions_for(self._observations_ph,
                                                      self._latents_ph)
 
@@ -211,4 +217,19 @@ class RealNVPPolicy(NNPolicy, Serializable):
 
         TODO: implement
         """
-        pass
+
+        feeds = { self._observations_ph: batch['observations'] }
+        raw_actions, actions, log_pis = tf.get_default_session().run(
+            (self._raw_actions, self._actions, self._log_pis), feeds)
+
+        logger.record_tabular('policy-entropy-mean', -np.mean(log_pis))
+        logger.record_tabular('log-pi-min', np.min(log_pis))
+        logger.record_tabular('log-pi-max', np.max(log_pis))
+
+        logger.record_tabular('actions-mean', np.mean(actions))
+        logger.record_tabular('actions-min', np.min(actions))
+        logger.record_tabular('actions-max', np.max(actions))
+
+        logger.record_tabular('raw-actions-mean', np.mean(raw_actions))
+        logger.record_tabular('raw-actions-min', np.min(raw_actions))
+        logger.record_tabular('raw-actions-max', np.max(raw_actions))
