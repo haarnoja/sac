@@ -53,7 +53,7 @@ COMMON_PARAMS = {
     # real nvp configs
     'policy_coupling_layers': 2,
     'policy_s_t_layers': 1,
-    'policy_scale_regularization': 0.0,
+    'policy_prior_regularization': 0.0,
     'preprocessing_hidden_sizes': None,
     'preprocessing_output_nonlinearity': 'relu',
 
@@ -347,7 +347,7 @@ def run_experiment(variant):
     s_t_hidden_sizes = [policy_s_t_units] * policy_s_t_layers
 
     real_nvp_config = {
-        "scale_regularization": variant['policy_scale_regularization'],
+        "prior_regularization": variant['policy_prior_regularization'],
         "num_coupling_layers": variant['policy_coupling_layers'],
         "translation_hidden_sizes": s_t_hidden_sizes,
         "scale_hidden_sizes": s_t_hidden_sizes,
