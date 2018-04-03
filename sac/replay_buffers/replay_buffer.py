@@ -1,7 +1,6 @@
 import abc
 
-
-class ReplayBuffer(object, metaclass=abc.ABCMeta):
+class ReplayBuffer(object):
     """
     A class used to save and replay data.
     """

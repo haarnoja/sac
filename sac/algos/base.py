@@ -26,6 +26,7 @@ class RLAlgorithm(Algorithm):
             epoch_length=1000,
             min_pool_size=10000,
             max_path_length=1000,
+            sampler=None,
             eval_n_episodes=10,
             eval_deterministic=True,
             eval_render=False,
@@ -62,6 +63,7 @@ class RLAlgorithm(Algorithm):
         self._eval_render = eval_render
 
         self._sess = tf_utils.get_default_session()
+        self._sampler = sampler
 
         self._env = None
         self._policy = None
@@ -69,85 +71,54 @@ class RLAlgorithm(Algorithm):
 
     def _train(self, env, policy, pool):
         self._init_training(env, policy, pool)
+        self._sampler.initialize(env, policy, pool)
 
-        with self._sess.as_default():
-            observation = env.reset()
-            policy.reset()
-
-            path_length = 0
-            path_return = 0
-            last_path_return = 0
-            max_path_return = -np.inf
-            n_episodes = 0
+        with tf_utils.get_default_session().as_default():
             gt.rename_root('RLAlgorithm')
             gt.reset()
             gt.set_def_unique(False)
 
-            for epoch in gt.timed_for(range(self._n_epochs + 1),
-                                      save_itrs=True):
+            for epoch in gt.timed_for(
+                    range(self._n_epochs + 1), save_itrs=True):
                 logger.push_prefix('Epoch #%d | ' % epoch)
 
                 for t in range(self._epoch_length):
-                    iteration = t + epoch * self._epoch_length
-
-                    action, _ = policy.get_action(observation)
-                    next_ob, reward, terminal, info = env.step(action)
-                    path_length += 1
-                    path_return += reward
-
-                    self._pool.add_sample(
-                        observation,
-                        action,
-                        reward,
-                        terminal,
-                        next_ob,
-                    )
-
-                    if terminal or path_length >= self._max_path_length:
-                        observation = env.reset()
-                        policy.reset()
-                        path_length = 0
-                        max_path_return = max(max_path_return, path_return)
-                        last_path_return = path_return
-
-                        path_return = 0
-                        n_episodes += 1
-
-                    else:
-                        observation = next_ob
+                    self._sampler.sample()
+                    if not self._sampler.batch_ready():
+                        continue
                     gt.stamp('sample')
 
-                    if self._pool.size >= self._min_pool_size:
-                        for i in range(self._n_train_repeat):
-                            batch = self._pool.random_batch(self._batch_size)
-                            self._do_training(iteration, batch)
-
+                    for i in range(self._n_train_repeat):
+                        self._do_training(
+                            iteration=t + epoch * self._epoch_length,
+                            batch=self._sampler.random_batch())
                     gt.stamp('train')
 
-                self._evaluate(epoch)
+                # TODO: no evaluations for now
+                # self._evaluate(policy, evaluation_env)
+                # gt.stamp('eval')
 
                 params = self.get_snapshot(epoch)
                 logger.save_itr_params(epoch, params)
-                times_itrs = gt.get_times().stamps.itrs
 
-                eval_time = times_itrs['eval'][-1] if epoch > 1 else 0
-                total_time = gt.get_times().total
-                logger.record_tabular('time-train', times_itrs['train'][-1])
-                logger.record_tabular('time-eval', eval_time)
-                logger.record_tabular('time-sample', times_itrs['sample'][-1])
-                logger.record_tabular('time-total', total_time)
+                time_itrs = gt.get_times().stamps.itrs
+                time_eval = time_itrs['eval'][-1]
+                time_total = gt.get_times().total
+                time_train = time_itrs.get('train', [0])[-1]
+                time_sample = time_itrs.get('sample', [0])[-1]
+
+                logger.record_tabular('time-train', time_train)
+                logger.record_tabular('time-eval', time_eval)
+                logger.record_tabular('time-sample', time_sample)
+                logger.record_tabular('time-total', time_total)
                 logger.record_tabular('epoch', epoch)
-                logger.record_tabular('episodes', n_episodes)
-                logger.record_tabular('max-path-return', max_path_return)
-                logger.record_tabular('last-path-return', last_path_return)
-                logger.record_tabular('pool-size', self._pool.size)
+
+                self._sampler.log_diagnostics()
 
                 logger.dump_tabular(with_prefix=False)
                 logger.pop_prefix()
 
-                gt.stamp('eval')
-
-            env.terminate()
+            self._sampler.terminate()
 
     def _evaluate(self, epoch):
         """Perform evaluation for the current policy.

@@ -199,7 +199,7 @@ class SAC(RLAlgorithm, Serializable):
         """
 
         self._qf_t = self._qf.get_output_for(
-            self._obs_pl, self._action_pl, reuse=True)  # N
+            [self._obs_pl, self._action_pl], reuse=True)  # N
 
         with tf.variable_scope('target'):
             vf_next_target_t = self._vf.get_output_for(self._obs_next_pl)  # N
@@ -243,7 +243,7 @@ class SAC(RLAlgorithm, Serializable):
         self._vf_params = self._vf.get_params_internal()
 
         log_target_t = self._qf.get_output_for(
-            self._obs_pl, tf.tanh(policy_dist.x_t), reuse=True)  # N
+            (self._obs_pl, tf.tanh(policy_dist.x_t)), reuse=True)  # N
         corr = self._squash_correction(policy_dist.x_t)
 
         kl_surrogate_loss_t = tf.reduce_mean(log_pi_t * tf.stop_gradient(
