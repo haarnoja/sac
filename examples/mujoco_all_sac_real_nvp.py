@@ -54,7 +54,7 @@ COMMON_PARAMS = {
     # real nvp configs
     'policy_coupling_layers': 2,
     'policy_s_t_layers': 1,
-    'policy_prior_regularization': 0.0,
+    'policy_prior_regularization': 0,
     'preprocessing_hidden_sizes': None,
     'preprocessing_output_nonlinearity': 'relu',
 
@@ -67,15 +67,7 @@ ENV_PARAMS = {
         'epoch_length': 1000,
         'max_path_length': 1000,
         'n_epochs': int(5e2 + 1),
-        'scale_reward': 100.0,
-
-        # 'scale_reward': 'polynomial_decay',
-        # 'scale_reward_begin': [30.0, 10.0],
-        # 'scale_reward_end': [300.0, 100.0],
-
-        # 'scale_reward': 'piecewise_constant',
-        # 'scale_reward_boundaries': [(int(100e3),), (int(200e3),)],
-        # 'scale_reward_values': [(30.0, 100.0), (10.0, 100.0)],
+        'scale_reward': [10.0],
 
         'preprocessing_hidden_sizes': (128, 128, 4),
         'policy_s_t_units': 2,
@@ -108,12 +100,12 @@ ENV_PARAMS = {
         'epoch_length': 1000,
         'max_path_length': 1000,
         'n_epochs': int(10e3 + 1),
-        'scale_reward': 10.0,
+        'scale_reward': [3.0, 10.0],
 
         'preprocessing_hidden_sizes': (128, 128, 16),
         'policy_s_t_units': 8,
 
-        'snapshot_gap': 1000,
+        'snapshot_gap': 2000,
     },
     'random-goal-ant': {  # 8 DoF
         'prefix': 'random-goal-ant',
