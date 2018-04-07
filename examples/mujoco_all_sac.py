@@ -31,6 +31,7 @@ COMMON_PARAMS = {
     "max_pool_size": 1E6,
     "n_train_repeat": 1,
     "epoch_length": 1000,
+    "reparameterize": True,
     "snapshot_mode": 'gap',
     "snapshot_gap": 100,
     "sync_pkl": True,
@@ -209,7 +210,7 @@ def run_experiment(variant):
         max_replay_buffer_size=variant['max_pool_size'],
     )
 
-    sampler = SimplerSampler(
+    sampler = SimpleSampler(
         max_path_length=variant['max_path_length'],
         min_pool_size=variant['max_path_length'],
         batch_size=variant['batch_size']
@@ -241,6 +242,7 @@ def run_experiment(variant):
         K=variant['K'],
         hidden_layer_sizes=[M, M],
         qf=qf,
+        reparameterize=variant['reparameterize'],
         reg=0.001,
     )
     
@@ -258,6 +260,7 @@ def run_experiment(variant):
         discount=variant['discount'],
         tau=variant['tau'],
 
+        reparameterize=variant['reparameterize'],
         save_full_state=False,
     )
 
