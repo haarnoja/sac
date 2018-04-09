@@ -1,8 +1,11 @@
+import collections
 import datetime
 import dateutil.tz
 import os
 import numpy as np
 
+PROJECT_PATH = os.path.dirname(
+    os.path.realpath(os.path.join(__file__, '..', '..')))
 
 def timestamp():
     now = datetime.datetime.now(dateutil.tz.tzlocal())
