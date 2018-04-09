@@ -93,7 +93,6 @@ class SAC(RLAlgorithm, Serializable):
             target_update_interval=1,
             action_prior='uniform',
 
-            reparameterize=True,
             save_full_state=False,
     ):
         """
@@ -137,7 +136,6 @@ class SAC(RLAlgorithm, Serializable):
         self._target_update_interval = target_update_interval
         self._action_prior = action_prior
 
-        self._reparameterize = reparameterize
         self._save_full_state = save_full_state
 
         self._Da = self._env.action_space.flat_dim
@@ -287,11 +285,8 @@ class SAC(RLAlgorithm, Serializable):
         policy_kl_loss = tf.reduce_mean(log_pi * tf.stop_gradient(
             log_pi - log_target + self._vf_t - policy_prior_log_probs))
 
-        if self._reparameterize:
-            kl_loss_t = tf.reduce_mean(log_pi_t - log_target_t - corr)
-        else:
-            kl_loss_t = tf.reduce_mean(log_pi_t * tf.stop_gradient(
-                log_pi_t - log_target_t - corr + self._vf_t))
+        kl_loss_t = tf.reduce_mean(log_pi_t * tf.stop_gradient(
+            log_pi_t - log_target_t - corr + self._vf_t))
 
         policy_loss = (policy_kl_loss
                        + policy_regularization_loss)
