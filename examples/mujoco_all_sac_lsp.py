@@ -27,7 +27,7 @@ from sac.envs import (
 
 from sac.misc.instrument import run_sac_experiment
 from sac.misc.utils import timestamp, unflatten
-from sac.policies import LatentSpacePolicy
+from sac.policies import LatentSpacePolicy, GMMPolicy
 from sac.replay_buffers import SimpleReplayBuffer
 from sac.value_functions import NNQFunction, NNVFunction
 from sac.preprocessors import MLPPreprocessor
@@ -123,7 +123,7 @@ ENVIRONMENTS = {
     },
 }
 
-DEFAULT_DOMAIN = 'swimmer'
+DEFAULT_DOMAIN = DEFAULT_ENV = 'swimmer'
 AVAILABLE_DOMAINS = set(ENVIRONMENTS.keys())
 AVAILABLE_TASKS = set(y for x in ENVIRONMENTS.values() for y in x.values())
 
@@ -137,6 +137,10 @@ def parse_args():
                         type=str,
                         choices=AVAILABLE_TASKS,
                         default='default')
+    parser.add_argument('--policy',
+                        type=str,
+                        choices=('lsp', 'gmm'),
+                        default='lsp')
     parser.add_argument('--env', type=str, default=DEFAULT_ENV)
     parser.add_argument('--exp_name', type=str, default=timestamp())
     parser.add_argument('--mode', type=str, default='local')
@@ -165,38 +169,48 @@ def run_experiment(variant):
     qf = NNQFunction(env_spec=env.spec, hidden_layer_sizes=(M, M))
     vf = NNVFunction(env_spec=env.spec, hidden_layer_sizes=(M, M))
 
-    nonlinearity = {
-        None: None,
-        'relu': tf.nn.relu,
-        'tanh': tf.nn.tanh
-    }[policy_params['preprocessing_output_nonlinearity']]
+    if policy_params['type'] == 'lsp':
+        nonlinearity = {
+            None: None,
+            'relu': tf.nn.relu,
+            'tanh': tf.nn.tanh
+        }[policy_params['preprocessing_output_nonlinearity']]
 
-    preprocessing_hidden_sizes = policy_params.get('preprocessing_hidden_sizes')
-    if preprocessing_hidden_sizes is not None:
-        observations_preprocessor = MLPPreprocessor(
+        preprocessing_hidden_sizes = policy_params.get('preprocessing_hidden_sizes')
+        if preprocessing_hidden_sizes is not None:
+            observations_preprocessor = MLPPreprocessor(
+                env_spec=env.spec,
+                layer_sizes=preprocessing_hidden_sizes,
+                output_nonlinearity=nonlinearity)
+        else:
+            observations_preprocessor = None
+
+        policy_s_t_layers = policy_params['s_t_layers']
+        policy_s_t_units = policy_params['s_t_units']
+        s_t_hidden_sizes = [policy_s_t_units] * policy_s_t_layers
+
+        bijector_config = {
+            'scale_regularization': policy_params['scale_regularization'],
+            'num_coupling_layers': policy_params['coupling_layers'],
+            'translation_hidden_sizes': s_t_hidden_sizes,
+            'scale_hidden_sizes': s_t_hidden_sizes,
+        }
+
+        policy = LatentSpacePolicy(
             env_spec=env.spec,
-            layer_sizes=preprocessing_hidden_sizes,
-            output_nonlinearity=nonlinearity)
+            squash=policy_params['squash'],
+            bijector_config=bijector_config,
+            observations_preprocessor=observations_preprocessor)
+    elif policy_params['type'] == 'gmm':
+        policy = GMMPolicy(
+            env_spec=env.spec,
+            K=policy_params['K'],
+            hidden_layer_sizes=(M, M),
+            qf=qf,
+            reg=1e-3,
+        )
     else:
-        observations_preprocessor = None
-
-    policy_s_t_layers = policy_params['s_t_layers']
-    policy_s_t_units = policy_params['s_t_units']
-    s_t_hidden_sizes = [policy_s_t_units] * policy_s_t_layers
-
-    bijector_config = {
-        'scale_regularization': policy_params['scale_regularization'],
-        'num_coupling_layers': policy_params['coupling_layers'],
-        'translation_hidden_sizes': s_t_hidden_sizes,
-        'scale_hidden_sizes': s_t_hidden_sizes,
-    }
-
-    policy = LatentSpacePolicy(
-        env_spec=env.spec,
-        mode="train",
-        squash=True,
-        bijector_config=bijector_config,
-        observations_preprocessor=observations_preprocessor)
+        raise NotImplementedError(policy_params['type'])
 
     algorithm = SAC(
         base_kwargs=base_kwargs,
@@ -257,7 +271,7 @@ def main():
     if (not domain) or (not task):
         domain, task = parse_domain_and_task(args.env)
 
-    variant_generator = get_variants(domain=domain, task=task, policy='lsp')
+    variant_generator = get_variants(domain=domain, task=task, policy=args.policy)
     launch_experiments(variant_generator, args)
 
 
