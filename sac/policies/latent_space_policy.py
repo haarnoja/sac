@@ -24,6 +24,8 @@ class LatentSpacePolicy(NNPolicy, Serializable):
                  bijector_config=None,
                  observations_preprocessor=None,
                  fix_h_on_reset=False,
+                 q_function=None,
+                 n_map_action_candidates=100,
                  name="lsp_policy"):
         """Initialize LatentSpacePolicy.
 
@@ -33,6 +35,8 @@ class LatentSpacePolicy(NNPolicy, Serializable):
             bijector_config (`dict`): Parameter configuration for bijector.
             squash (`bool`): If True, squash the action samples between
                 -1 and 1 with tanh.
+            n_map_action_candidates ('int'): Number of action candidates for
+            estimating the maximum a posteriori (deterministic) action.
         """
         Serializable.quick_init(self, locals())
 
@@ -41,6 +45,8 @@ class LatentSpacePolicy(NNPolicy, Serializable):
         self._mode = mode
         self._squash = squash
         self._fix_h_on_reset = fix_h_on_reset
+        self._q_function = q_function
+        self._n_map_action_candidates=n_map_action_candidates
 
         self._Da = env_spec.action_space.flat_dim
         self._Ds = env_spec.observation_space.flat_dim
@@ -142,6 +148,21 @@ class LatentSpacePolicy(NNPolicy, Serializable):
         self._determistic_actions = self.actions_for(self._observations_ph,
                                                      self._latents_ph)
 
+    def get_action(self, observation):
+        """Sample single action based on the observations.
+        """
+
+        if self._is_deterministic and self._n_map_action_candidates > 1:
+            observations = np.tile(
+                observation[None], reps=(self._n_map_action_candidates, 1))
+            action_candidates = self.get_actions(observations)
+            q_values = self._q_function.eval(observations, action_candidates)
+            best_action_index = np.argmax(q_values)
+
+            return action_candidates[best_action_index], {}
+        else:
+            return self.get_actions(observation[None])[0], {}
+
     def get_actions(self, observations):
         """Sample batch of actions based on the observations"""
 
@@ -196,10 +217,7 @@ class LatentSpacePolicy(NNPolicy, Serializable):
             self._fixed_h = self.sample_z.eval()
 
     def log_diagnostics(self, iteration, batch):
-        """Record diagnostic information to the logger.
-
-        TODO: implement
-        """
+        """Record diagnostic information to the logger."""
 
         feeds = { self._observations_ph: batch['observations'] }
         raw_actions, actions, log_pis = tf.get_default_session().run(
