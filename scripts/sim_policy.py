@@ -5,8 +5,7 @@ import tensorflow as tf
 
 from rllab.sampler.utils import rollout
 
-if __name__ == "__main__":
-
+def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('file', type=str, help='Path to the snapshot file.')
     parser.add_argument('--max-path-length', '-l', type=int, default=1000)
@@ -15,10 +14,14 @@ if __name__ == "__main__":
                         action='store_true')
     parser.add_argument('--no-deterministic', '-nd', dest='deterministic',
                         action='store_false')
+    parser.add_argument('--policy_h', type=int)
     parser.set_defaults(deterministic=True)
 
     args = parser.parse_args()
 
+    return args
+
+def simulate_policy(args):
     with tf.Session() as sess:
         data = joblib.load(args.file)
         if 'algo' in data.keys():
@@ -33,3 +36,6 @@ if __name__ == "__main__":
                 path = rollout(env, policy,
                                max_path_length=args.max_path_length,
                                animated=True, speedup=args.speedup)
+if __name__ == "__main__":
+    args = parse_args()
+    simulate_policy(args)

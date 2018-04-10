@@ -20,41 +20,33 @@ class RLAlgorithm(Algorithm):
 
     def __init__(
             self,
-            batch_size=64,
+            sampler,
             n_epochs=1000,
             n_train_repeat=1,
             epoch_length=1000,
-            min_pool_size=10000,
-            max_path_length=1000,
             eval_n_episodes=10,
             eval_deterministic=True,
             eval_render=False,
+            control_interval=1
     ):
         """
         Args:
-            batch_size (`int`): Size of the sample batch to be used
-                for training.
             n_epochs (`int`): Number of epochs to run the training for.
             n_train_repeat (`int`): Number of times to repeat the training
                 for single time step.
             epoch_length (`int`): Epoch length.
-            min_pool_size (`int`): Minimum size of the sample pool before
-                running training.
-            max_path_length (`int`): Number of timesteps before resetting
-                environment and policy, and the number of paths used for
-                evaluation rollout.
             eval_n_episodes (`int`): Number of rollouts to evaluate.
             eval_deterministic (`int`): Whether or not to run the policy in
                 deterministic mode when evaluating policy.
             eval_render (`int`): Whether or not to render the evaluation
                 environment.
         """
-        self._batch_size = batch_size
+        self.sampler = sampler
+
         self._n_epochs = n_epochs
         self._n_train_repeat = n_train_repeat
         self._epoch_length = epoch_length
-        self._min_pool_size = min_pool_size
-        self._max_path_length = max_path_length
+        self._control_interval = control_interval
 
         self._eval_n_episodes = eval_n_episodes
         self._eval_deterministic = eval_deterministic
@@ -67,17 +59,18 @@ class RLAlgorithm(Algorithm):
         self._pool = None
 
     def _train(self, env, policy, pool):
+        """Perform RL training.
+
+        Args:
+            env (`rllab.Env`): Environment used for training
+            policy (`Policy`): Policy used for training
+            pool (`PoolBase`): Sample pool to add samples to
+        """
+
         self._init_training(env, policy, pool)
+        self.sampler.initialize(env, policy, pool)
 
         with self._sess.as_default():
-            observation = env.reset()
-            policy.reset()
-
-            path_length = 0
-            path_return = 0
-            last_path_return = 0
-            max_path_return = -np.inf
-            n_episodes = 0
             gt.rename_root('RLAlgorithm')
             gt.reset()
             gt.set_def_unique(False)
@@ -87,40 +80,16 @@ class RLAlgorithm(Algorithm):
                 logger.push_prefix('Epoch #%d | ' % epoch)
 
                 for t in range(self._epoch_length):
-                    iteration = t + epoch * self._epoch_length
-
-                    action, _ = policy.get_action(observation)
-                    next_ob, reward, terminal, info = env.step(action)
-                    path_length += 1
-                    path_return += reward
-
-                    self._pool.add_sample(
-                        observation,
-                        action,
-                        reward,
-                        terminal,
-                        next_ob,
-                    )
-
-                    if terminal or path_length >= self._max_path_length:
-                        observation = env.reset()
-                        policy.reset()
-                        path_length = 0
-                        max_path_return = max(max_path_return, path_return)
-                        last_path_return = path_return
-
-                        path_return = 0
-                        n_episodes += 1
-
-                    else:
-                        observation = next_ob
+                    # TODO.codeconsolidation: Add control interval to sampler
+                    self.sampler.sample()
+                    if not self.sampler.batch_ready():
+                        continue
                     gt.stamp('sample')
 
-                    if self._pool.size >= self._min_pool_size:
-                        for i in range(self._n_train_repeat):
-                            batch = self._pool.random_batch(self._batch_size)
-                            self._do_training(iteration, batch)
-
+                    for i in range(self._n_train_repeat):
+                        self._do_training(
+                            iteration=t + epoch * self._epoch_length,
+                            batch=self.sampler.random_batch())
                     gt.stamp('train')
 
                 self._evaluate(epoch)
@@ -136,17 +105,15 @@ class RLAlgorithm(Algorithm):
                 logger.record_tabular('time-sample', times_itrs['sample'][-1])
                 logger.record_tabular('time-total', total_time)
                 logger.record_tabular('epoch', epoch)
-                logger.record_tabular('episodes', n_episodes)
-                logger.record_tabular('max-path-return', max_path_return)
-                logger.record_tabular('last-path-return', last_path_return)
-                logger.record_tabular('pool-size', self._pool.size)
+
+                self.sampler.log_diagnostics()
 
                 logger.dump_tabular(with_prefix=False)
                 logger.pop_prefix()
 
                 gt.stamp('eval')
 
-            env.terminate()
+            self.sampler.terminate()
 
     def _evaluate(self, epoch):
         """Perform evaluation for the current policy.
@@ -160,8 +127,8 @@ class RLAlgorithm(Algorithm):
 
         with self._policy.deterministic(self._eval_deterministic):
             paths = rollouts(self._eval_env, self._policy,
-                             self._max_path_length, self._eval_n_episodes,
-                             False)
+                             self.sampler._max_path_length, self._eval_n_episodes,
+                            )
 
         total_returns = [path['rewards'].sum() for path in paths]
         episode_lengths = [len(p['rewards']) for p in paths]
@@ -179,11 +146,12 @@ class RLAlgorithm(Algorithm):
         if self._eval_render:
             self._eval_env.render(paths)
 
-        batch = self._pool.random_batch(self._batch_size)
-        self.log_diagnostics(batch)
+        iteration = epoch*self._epoch_length
+        batch = self.sampler.random_batch()
+        self.log_diagnostics(iteration, batch)
 
     @abc.abstractmethod
-    def log_diagnostics(self, batch):
+    def log_diagnostics(self, iteration, batch):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -191,7 +159,7 @@ class RLAlgorithm(Algorithm):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def _do_training(self, itr, batch):
+    def _do_training(self, iteration, batch):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -199,13 +167,16 @@ class RLAlgorithm(Algorithm):
         """Method to be called at the start of training.
 
         :param env: Environment instance.
-        :param policy:  Policy instance.
+        :param policy: Policy instance.
         :return: None
         """
 
         self._env = env
         if self._eval_n_episodes > 0:
-            self._eval_env = deep_clone(env)
+            # TODO: This is horrible. Don't do this. Get rid of this.
+            import tensorflow as tf
+            with tf.variable_scope("low_level_policy", reuse=False):
+                self._eval_env = deep_clone(env)
         self._policy = policy
         self._pool = pool
 

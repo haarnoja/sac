@@ -75,7 +75,6 @@ class GMM(object):
         log_sig_t = w_and_mu_and_logsig_t[..., 1+Dx:]
 
         log_sig_t = tf.minimum(log_sig_t, LOG_SIG_CAP_MAX)
-        log_sig_t = tf.maximum(log_sig_t, LOG_SIG_CAP_MIN)
 
         log_w_t = tf.maximum(log_w_t, LOG_W_CAP_MIN)
 
@@ -109,9 +108,7 @@ class GMM(object):
             xz_sig_t = tf.boolean_mask(xz_sigs_t, mask_t)  # N x Dx
 
             # Sample x.
-            x_t = tf.stop_gradient(
-                xz_mu_t + xz_sig_t * tf.random_normal((N_t, Dx))
-            )  # N x Dx
+            x_t = tf.stop_gradient(xz_mu_t + xz_sig_t * tf.random_normal((N_t, Dx)))  # N x Dx
 
             # log p(x|z)
             log_p_xz_t = self._create_log_gaussian(

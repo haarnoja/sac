@@ -1,5 +1,10 @@
 COPYRIGHT
 
+All contributions by the University of California:
+Copyright (c) 2017, 2018 The Regents of the University of California (Regents)
+All rights reserved.
+
+All other contributions:
 Copyright (c) 2017, 2018, the respective contributors
 All rights reserved.
 
