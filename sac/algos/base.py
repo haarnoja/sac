@@ -51,8 +51,6 @@ class RLAlgorithm(Algorithm):
         self._n_epochs = n_epochs
         self._n_train_repeat = n_train_repeat
         self._epoch_length = epoch_length
-        self._min_pool_size = min_pool_size
-        self._max_path_length = max_path_length
         self._control_interval = control_interval
 
         self._eval_n_episodes = eval_n_episodes
@@ -117,7 +115,7 @@ class RLAlgorithm(Algorithm):
 
                     for i in range(self._n_train_repeat):
                         self._do_training(
-                            itr=t + epoch * self._epoch_length,
+                            iteration=t + epoch * self._epoch_length,
                             batch=self.sampler.random_batch())
                     gt.stamp('train')
 
@@ -188,7 +186,7 @@ class RLAlgorithm(Algorithm):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def _do_training(self, itr, batch):
+    def _do_training(self, iteration, batch):
         raise NotImplementedError
 
     @abc.abstractmethod
