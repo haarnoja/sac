@@ -1,4 +1,4 @@
-"""Real NVP policy"""
+"""Latent Space Policy."""
 
 from contextlib import contextmanager
 import numpy as np
@@ -14,31 +14,30 @@ from sac.policies import NNPolicy
 EPS = 1e-6
 
 
-class RealNVPPolicy(NNPolicy, Serializable):
-    """Real NVP policy"""
+class LatentSpacePolicy(NNPolicy, Serializable):
+    """Latent Space Policy."""
 
     def __init__(self,
                  env_spec,
                  mode="train",
                  squash=True,
-                 real_nvp_config=None,
+                 bijector_config=None,
                  observations_preprocessor=None,
                  fix_h_on_reset=False,
-                 name="real_nvp_policy"):
-        """Initialize Real NVP policy.
+                 name="lsp_policy"):
+        """Initialize LatentSpacePolicy.
 
         Args:
             env_spec (`rllab.EnvSpec`): Specification of the environment
                 to create the policy for.
-            real_nvp_config (`dict`): Parameter
-                configuration for real nvp distribution.
+            bijector_config (`dict`): Parameter configuration for bijector.
             squash (`bool`): If True, squash the action samples between
                 -1 and 1 with tanh.
         """
         Serializable.quick_init(self, locals())
 
         self._env_spec = env_spec
-        self._real_nvp_config = real_nvp_config
+        self._bijector_config = bijector_config
         self._mode = mode
         self._squash = squash
         self._fix_h_on_reset = fix_h_on_reset
@@ -59,7 +58,7 @@ class RealNVPPolicy(NNPolicy, Serializable):
 
     def actions_for(self, observations, latents=None,
                     name=None, reuse=tf.AUTO_REUSE, with_log_pis=False,
-                    regularize=False, with_raw_actions=False):
+                    with_raw_actions=False):
         name = name or self.name
 
         with tf.variable_scope(name, reuse=reuse):
@@ -71,12 +70,11 @@ class RealNVPPolicy(NNPolicy, Serializable):
 
             if latents is not None:
                 raw_actions = self.bijector.forward(
-                    latents, condition=conditions, regularize=regularize)
+                    latents, condition=conditions)
             else:
                 N = tf.shape(conditions)[0]
                 raw_actions = self.distribution.sample(
-                    N, bijector_kwargs={"condition": conditions,
-                                        "regularize": regularize})
+                    N, bijector_kwargs={"condition": conditions})
 
             raw_actions = tf.stop_gradient(raw_actions)
 
@@ -96,13 +94,12 @@ class RealNVPPolicy(NNPolicy, Serializable):
         return actions
 
     def log_pis_for(self, conditions, raw_actions, name=None,
-                    reuse=tf.AUTO_REUSE, regularize=False):
+                    reuse=tf.AUTO_REUSE):
         name = name or self.name
 
         with tf.variable_scope(name, reuse=reuse):
             log_pis = self.distribution.log_prob(
-                raw_actions, bijector_kwargs={"condition": conditions,
-                                              "regularize": regularize})
+                raw_actions, bijector_kwargs={"condition": conditions})
 
         if self._squash:
             log_pis -= self._squash_correction(raw_actions)
@@ -111,12 +108,11 @@ class RealNVPPolicy(NNPolicy, Serializable):
 
     def build(self):
         ds = tf.contrib.distributions
-        real_nvp_config = self._real_nvp_config
+        config = self._bijector_config
         self.bijector = RealNVPBijector(
-            num_coupling_layers=real_nvp_config.get("num_coupling_layers"),
-            translation_hidden_sizes=real_nvp_config.get("translation_hidden_sizes"),
-            scale_hidden_sizes=real_nvp_config.get("scale_hidden_sizes"),
-            prior_regularization=real_nvp_config.get("prior_regularization"),
+            num_coupling_layers=config.get("num_coupling_layers"),
+            translation_hidden_sizes=config.get("translation_hidden_sizes"),
+            scale_hidden_sizes=config.get("scale_hidden_sizes"),
             event_ndims=self._Da)
 
         self.base_distribution = ds.MultivariateNormalDiag(
@@ -127,7 +123,7 @@ class RealNVPPolicy(NNPolicy, Serializable):
         self.distribution = ds.ConditionalTransformedDistribution(
             distribution=self.base_distribution,
             bijector=self.bijector,
-            name="RealNVPPolicyDistribution")
+            name="lsp_distribution")
 
         self._observations_ph = tf.placeholder(
             dtype=tf.float32,
@@ -146,22 +142,13 @@ class RealNVPPolicy(NNPolicy, Serializable):
         self._determistic_actions = self.actions_for(self._observations_ph,
                                                      self._latents_ph)
 
-    def get_action(self, observation):
-        """Sample single action based on the observations.
-
-        TODO: if self._is_deterministic
-        """
-        return self.get_actions(observation[None])[0], {}
-
     def get_actions(self, observations):
         """Sample batch of actions based on the observations"""
 
         feed_dict = { self._observations_ph: observations }
 
         if self._fixed_h is not None:
-            feed_dict.update({
-                self._latents_ph: self._fixed_h
-            })
+            feed_dict.update({ self._latents_ph: self._fixed_h })
             actions = tf.get_default_session().run(
                 self._determistic_actions,
                 feed_dict=feed_dict)
@@ -176,7 +163,7 @@ class RealNVPPolicy(NNPolicy, Serializable):
         return tf.reduce_sum(tf.log(1 - tf.tanh(actions) ** 2 + EPS), axis=1)
 
     @contextmanager
-    def deterministic(self, set_deterministic=True):
+    def deterministic(self, set_deterministic=True, h=None):
         """Context manager for changing the determinism of the policy.
 
         See `self.get_action` for further information about the effect of
@@ -188,21 +175,17 @@ class RealNVPPolicy(NNPolicy, Serializable):
             value when the context exits.
         """
         was_deterministic = self._is_deterministic
+        old_fixed_h = self._fixed_h
+
         self._is_deterministic = set_deterministic
-        yield
-        self._is_deterministic = was_deterministic
+        if set_deterministic:
+            if h is None: h = self.sample_z.eval()
+            self._fixed_h = h
 
-    @contextmanager
-    def fix_h(self, h=None):
-        if h is None:
-            h = self.sample_z.eval()
-
-        was_deterministic = self._is_deterministic
-        self._is_deterministic = True
-        self._fixed_h = h
         yield
-        self._fixed_h = None
+
         self._is_deterministic = was_deterministic
+        self._fixed_h = old_fixed_h
 
     def get_params_internal(self, **tags):
         if tags: raise NotImplementedError
@@ -212,7 +195,7 @@ class RealNVPPolicy(NNPolicy, Serializable):
         if self._fix_h_on_reset:
             self._fixed_h = self.sample_z.eval()
 
-    def log_diagnostics(self, batch):
+    def log_diagnostics(self, iteration, batch):
         """Record diagnostic information to the logger.
 
         TODO: implement
