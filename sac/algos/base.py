@@ -90,13 +90,13 @@ class RLAlgorithm(Algorithm):
 
                     for i in range(self._n_train_repeat):
                         self._do_training(
-                            iteration=t + epoch * self._epoch_length,
+                            itr=t + epoch * self._epoch_length,
                             batch=self._sampler.random_batch())
                     gt.stamp('train')
 
                 # TODO: no evaluations for now
                 # self._evaluate(policy, evaluation_env)
-                # gt.stamp('eval')
+                gt.stamp('eval')
 
                 params = self.get_snapshot(epoch)
                 logger.save_itr_params(epoch, params)

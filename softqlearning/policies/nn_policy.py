@@ -3,7 +3,6 @@ from contextlib import contextmanager
 import tensorflow as tf
 
 from rllab.core.serializable import Serializable
-
 from rllab.misc.overrides import overrides
 from sandbox.rocky.tf.policies.base import Policy
 
@@ -14,10 +13,9 @@ class NNPolicy(Policy, Serializable):
 
         self._obs_pl = obs_pl
         self._action = action
+        self._scope_name = (tf.get_variable_scope().name
+                            if not scope_name else scope_name)
         self._mode = None
-        self._scope_name = (
-            tf.get_variable_scope().name if not scope_name else scope_name
-        )
         super(NNPolicy, self).__init__(env_spec)
 
     @overrides
@@ -36,7 +34,8 @@ class NNPolicy(Policy, Serializable):
 
     @overrides
     def get_params_internal(self, **tags):
-        if len(tags) > 0:
+        # TODO: rewrite this using tensorflow collections
+        if tags:
             raise NotImplementedError
         scope = self._scope_name
         # Add "/" to 'scope' unless it's empty (otherwise get_collection will

@@ -30,8 +30,8 @@ class SimpleReplayBuffer(ReplayBuffer, Serializable):
         self._top = 0
         self._size = 0
 
-    def add_sample(self, observation, action, reward, terminal,
-                   next_observation, **kwargs):
+    def add_sample(self, observation, action, reward,
+                   next_observation, terminal, **kwargs):
         self._observations[self._top] = observation
         self._actions[self._top] = action
         self._rewards[self._top] = reward

@@ -2,8 +2,7 @@ import numpy as np
 import time
 import random
 import os
-from softqlearning.environments.real.real_sawyer_base import SawyerEnv
-import softqlearning.environments.real.real_sawyer_base as base_sawyer
+from sac.envs.real.real_sawyer_base import SawyerEnv
 
 from rllab.core.serializable import Serializable
 import rospy
@@ -137,13 +136,6 @@ class SawyerEnvReaching(SawyerEnv, Serializable):
             self._target_pos = random.choice(targets)
         else:
             raise ValueError
-
-"""Unneeded"""
-def get_env_dims(randomize_target, **kwargs):
-    dims = base_sawyer.get_env_dims(**kwargs)
-    if randomize_target:
-        dims['observation_space_dims'] += 3
-    return dims
 
 if __name__ == '__main__':
     env = SawyerEnvReaching()

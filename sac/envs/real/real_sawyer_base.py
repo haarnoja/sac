@@ -39,29 +39,16 @@ from rllab.envs.base import Env
 #         1.50760449,  1.81149805])
 
 # close neutral
-NEUTRAL = np.array([ 0.29048438, -0.2022959 , -1.81892871,  1.37756934,  1.38645898,
-        1.81822852,  2.22537109])
+# NEUTRAL = np.array([ 0.29048438, -0.2022959 , -1.81892871,  1.37756934,  1.38645898,
+#         1.81822852,  2.22537109])
 
-# neutral for block insertion success
-# NEUTRAL = np.array([ 0.52095508, -1.06019336, -2.18103027,  1.13347656,  0.70633594,
-#         2.1983916 ,  2.05167969])
-
-# neutral to the side
-# NEUTRAL = np.array([-0.31949902, -0.24225098, -1.19703516,  1.23249023,  1.16652051,
-#         1.27680762,  1.75428906])
-
-# neutral side and up
-# NEUTRAL = np.array([-0.66123242, -0.35952734, -1.68768359,  0.8789082 ,  1.28650195,
-#         1.85214551,  1.54358301])
-
-# neutral to the right
-# NEUTRAL = np.array([ 0.88350781,  0.24946582, -1.95409082,  0.98032227,  1.91548437,
-#         1.6712373 ,  3.1595293 ])
-
+# safe neutral?
+NEUTRAL = np.array([ 0.25357227, -0.71024023, -0.3959541 ,  1.31821289,  0.38679004,
+        0.99984277, -0.00170312])
 
 BOX = np.array([
-        [-0.1, -0.6, 0.20],
-        [0.7,  0.7,  1.50]
+        [0.2, -0.7, 0.1],
+        [0.9,  0.7,  0.9]
 ])
 
 # define this
@@ -105,7 +92,7 @@ ALL_LINKS = (
 
 class SawyerEnv(Env):
     MAX_TORQUE = 3.
-    MAX_TORQUES = 0.5 * np.array([8, 12, 6, 5, 4, 3, 6])
+    MAX_TORQUES = 0.4 * np.array([8, 7, 6, 5, 4, 3, 4])
 
 #     ADIM = 7
 #     ODIM = 2 * ADIM + 3
@@ -121,7 +108,7 @@ class SawyerEnv(Env):
 
         self._safety_box = BOX
 
-        self.safety_box_magnitude = 50
+        self.safety_box_magnitude = 3
         self.safety_end_effector_box = True
 
         if joint_mask is None:
@@ -206,7 +193,7 @@ class SawyerEnv(Env):
 
 
     def _make_safe(self, torques):
-        safe_coeff = 2
+        safe_coeff = self.safety_box_magnitude
 
         pos_dict = self._kinematics.forward_position_kinematics_all(
             link_names=SAFE_LINKS.keys(), components='vel'
@@ -225,6 +212,7 @@ class SawyerEnv(Env):
                 safe_torques[:n_jnts_involved] = t.squeeze()
                 safe_torques *= safe_coeff * self.MAX_TORQUES
 
+                # torques = safe_torques
                 torques += safe_torques
         return torques
 
@@ -266,9 +254,9 @@ class SawyerEnv(Env):
         for i in range(100):
             joint_angles = self.get_joint_angles()
             error = joint_angles - NEUTRAL
-            torques = self._get_pd_torques(error, 30, 5)
+            torques = self._get_pd_torques(error, 50, 10)
             self.set_joint_torques(torques)
-            if sum(error ** 2) < 0.025:
+            if sum(error ** 2) < 0.05:
                 break
             r.sleep()
 
@@ -366,7 +354,7 @@ class SawyerEnv(Env):
         jac = self._kinematics.jacobian(components).getA()
         return jac
 
-    def joint_in_box(self, joint_name, joint_pos, print_violation=False):
+    def joint_in_box(self, joint_name, joint_pos, print_violation=True):
         BOX = SAFE_LINKS[joint_name]
         # if not self._use_bounding_box_z_axis:
         #     BOX[0][2] = -1.
@@ -431,9 +419,10 @@ class SawyerEnv(Env):
         if np.isnan(torques).any() or len(torques) != 7:
             return
         # self.get_logging_observations()
-        torques = self._make_safe(torques)
         torques = np.clip(np.asarray(torques),
                           -self.MAX_TORQUES, self.MAX_TORQUES)
+
+        torques = self._make_safe(torques)
 
         # make sure torques do not push joints past the angle limits
         # torques = self.make_safe_joint_angles(torques)

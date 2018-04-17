@@ -16,7 +16,7 @@ from sac.misc import tf_utils
 class GMMPolicy(NNPolicy, Serializable):
     """Gaussian Mixture Model policy"""
     def __init__(self, env_spec, K=2, hidden_layer_sizes=(100, 100), reg=0.001,
-                 squash=True, qf=None):
+                 squash=True, smoothing_coeff=None, qf=None):
         """
         Args:
             env_spec (`rllab.EnvSpec`): Specification of the environment
@@ -38,6 +38,12 @@ class GMMPolicy(NNPolicy, Serializable):
         self._is_deterministic = False
         self._qf = qf
         self._reg = reg
+
+        assert smoothing_coeff is None or 0 <= smoothing_coeff <= 1
+        self._alpha = smoothing_coeff
+        if smoothing_coeff:
+            self._beta = np.sqrt(1 - self._alpha ** 2)
+            self._x_prev = 0
 
         self._obs_pl = tf.placeholder(
             tf.float32,
@@ -75,6 +81,14 @@ class GMMPolicy(NNPolicy, Serializable):
         If `self._is_deterministic` is True, returns a greedily sampled action
         for the observations. If False, return stochastically sampled action.
         """
+        if self._mode == 'execute' and self._alpha:
+            # policy smoothing
+
+            sampled_action, _  = NNPolicy.get_action(self, obs)
+            next_action = self._alpha * self._x_prev + self._beta * sampled_action
+            self._x_prev = next_action
+            return next_action, {}
+
 
         if not self._is_deterministic:
             return NNPolicy.get_action(self, obs)

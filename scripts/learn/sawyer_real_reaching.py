@@ -5,19 +5,7 @@ import os
 import numpy as np
 
 from rllab.envs.normalized_env import normalize
-
-# from softqlearning.algorithms.sql import SQL
-# from softqlearning.misc.instrument import run_sql_experiment
-# from softqlearning.replay_buffers import SimpleReplayBuffer
-# from softqlearning.misc.utils import timestamp
-# from softqlearning.misc.remote_sampler import RemoteSampler
-# from softqlearning.policies.stochastic_policy import StochasticNNPolicy
-# from softqlearning.value_functions import NNQFunction
-
-
-from softqlearning.environments.real.real_sawyer_reaching import SawyerEnvReaching
-
-from softqlearning.misc.kernel import adaptive_isotropic_gaussian_kernel
+from sac.envs.real.real_sawyer_reaching import SawyerEnvReaching
 
 from sac.replay_buffers.simple_replay_buffer import SimpleReplayBuffer
 from sac.misc.remote_sampler import RemoteSampler
@@ -32,7 +20,7 @@ from sac.algos.sac_algo import SAC
 def run(variant): # parameter is unused
     joint_mask = [True, True, True, True, True, True, True]
 
-    target = np.array([0.5, -0.4, 0.7])
+    target = np.array([0.4, -0.5, 0.3])
     reaching_env_kwargs = dict(
         target_pos=target,
         target_type='cartesian',
@@ -40,7 +28,7 @@ def run(variant): # parameter is unused
         action_cost_coeff=0.001,
         joint_mask=joint_mask,
         include_xpos=True,
-        include_pose=True,
+        include_pose=False,
         include_actual_torques=False,
         loss_type='l2',
         loss_param=None,
@@ -63,7 +51,7 @@ def run(variant): # parameter is unused
 
     # incorporate remote sampler into base
     base_kwargs = dict(
-        epoch_length=500,
+        epoch_length=1000,
         n_epochs=5000,
         # scale_reward=1,
         n_train_repeat=1,
@@ -90,6 +78,7 @@ def run(variant): # parameter is unused
         hidden_layer_sizes=[M, M],
         qf=qf,
         reg=0.001, # need smoothing
+        smoothing_coeff=0.75,
     )
     """
     algorithm = SQL(
