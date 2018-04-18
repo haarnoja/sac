@@ -43,8 +43,10 @@ from rllab.envs.base import Env
 #         1.81822852,  2.22537109])
 
 # safe neutral?
-NEUTRAL = np.array([ 0.25357227, -0.71024023, -0.3959541 ,  1.31821289,  0.38679004,
-        0.99984277, -0.00170312])
+NEUTRAL = np.array([ 0.28625879, -0.06652148, -1.45274023,  1.87639258,  1.47005664,
+        1.47084668, -0.87656152])
+
+
 
 BOX = np.array([
         [0.2, -0.7, 0.1],
@@ -92,7 +94,7 @@ ALL_LINKS = (
 
 class SawyerEnv(Env):
     MAX_TORQUE = 3.
-    MAX_TORQUES = 0.4 * np.array([8, 7, 6, 5, 4, 3, 4])
+    MAX_TORQUES = 0.5 * np.array([8, 12, 6, 5, 4, 3, 6])
 
 #     ADIM = 7
 #     ODIM = 2 * ADIM + 3
@@ -254,7 +256,7 @@ class SawyerEnv(Env):
         for i in range(100):
             joint_angles = self.get_joint_angles()
             error = joint_angles - NEUTRAL
-            torques = self._get_pd_torques(error, 50, 10)
+            torques = self._get_pd_torques(error, 30, 5)
             self.set_joint_torques(torques)
             if sum(error ** 2) < 0.05:
                 break

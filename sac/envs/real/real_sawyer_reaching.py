@@ -7,7 +7,6 @@ from sac.envs.real.real_sawyer_base import SawyerEnv
 from rllab.core.serializable import Serializable
 import rospy
 from intera_interface import CHECK_VERSION, limb, RobotEnable
-from softqlearning.misc.baxter_pykdl import baxter_kinematics
 
 
 class SawyerEnvReaching(SawyerEnv, Serializable):

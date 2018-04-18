@@ -20,7 +20,7 @@ from sac.algos.sac_algo import SAC
 def run(variant): # parameter is unused
     joint_mask = [True, True, True, True, True, True, True]
 
-    target = np.array([0.4, -0.5, 0.3])
+    target = np.array([0.5, -0.4, 0.5])
     reaching_env_kwargs = dict(
         target_pos=target,
         target_type='cartesian',
@@ -47,7 +47,7 @@ def run(variant): # parameter is unused
     sampler = RemoteSampler(
         max_path_length=150,
         min_pool_size=150,
-        batch_size=128)
+        batch_size=256)
 
     # incorporate remote sampler into base
     base_kwargs = dict(
@@ -109,7 +109,7 @@ def run(variant): # parameter is unused
         vf=vf,
 
         lr=3e-4,
-        scale_reward=100,
+        scale_reward=30,
         discount=0.99,
         tau=0.01,
 
