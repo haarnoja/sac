@@ -21,10 +21,32 @@ def run(variant): # parameter is unused
     joint_mask = [True, True, True, True, True, True, True]
 
     target = np.array([0.5, -0.4, 0.5])
+
+    """
+    # Example parameters for randomized targets
+    random_target_set = [np.array([0.5, -0.4, 0.5]),
+                            np.array([0.5, 0.0, 0.5]),
+                            np.array([0.5, 0.4, 0.5])]
+                            
+    random_target_params = dict(method='set', 
+                                targets=random_target_set)
+    """
+    
+    """
+    # Example paramaeters for randomized targets using a box
+    random_target_params = dict(
+                        method='box',
+                        x=(0.3, 0.6),
+                        y=(-0.4, 0.4),
+                        z=(0.2, 0.7)
+                        )
+    """
+
     reaching_env_kwargs = dict(
         target_pos=target,
         target_type='cartesian',
         randomize_target=False,
+        random_target_params=None,
         action_cost_coeff=0.001,
         joint_mask=joint_mask,
         include_xpos=True,
@@ -49,18 +71,16 @@ def run(variant): # parameter is unused
         min_pool_size=150,
         batch_size=256)
 
-    # incorporate remote sampler into base
     base_kwargs = dict(
         epoch_length=1000,
         n_epochs=5000,
-        # scale_reward=1,
         n_train_repeat=1,
         eval_render=False,
-        eval_n_episodes=0, # do not evaluate
+        eval_n_episodes=0, # does not do evaluation episodes
         sampler=sampler,
     )
 
-    M = 128
+    M = 256
     qf = NNQFunction(
         env_spec=env.spec,
         hidden_layer_sizes=[M, M],
@@ -71,35 +91,15 @@ def run(variant): # parameter is unused
         hidden_layer_sizes=[M, M],
     )
 
-    # policy = StochasticNNPolicy(env_spec=env.spec, hidden_layer_sizes=(M, M), smoothing_coeff=0.5)
     policy = GMMPolicy(
         env_spec=env.spec,
         K=1, # single Gaussian
         hidden_layer_sizes=[M, M],
         qf=qf,
-        reg=0.001, # need smoothing
+        reg=0.001, 
         smoothing_coeff=0.75,
     )
-    """
-    algorithm = SQL(
-        base_kwargs=base_kwargs,
-        env=env,
-        pool=pool,
-        qf=qf,
-        policy=policy,
-        kernel_fn=adaptive_isotropic_gaussian_kernel,
-        kernel_n_particles=32,
-        kernel_update_ratio=0.5,
-        value_n_particles=16,
-        td_target_update_interval=1000,
-        qf_lr=3e-4,
-        policy_lr=3e-4,
-        discount=0.99,
-        reward_scale=100,
-        save_full_state=False,
-        save_pool=True
-    )
-    """
+
     algorithm = SAC(
         base_kwargs=base_kwargs,
         env=env,
@@ -111,7 +111,7 @@ def run(variant): # parameter is unused
         lr=3e-4,
         scale_reward=30,
         discount=0.99,
-        tau=0.01,
+        tau=0.001,
 
         save_full_state=False,
     )
@@ -119,7 +119,7 @@ def run(variant): # parameter is unused
     algorithm.train()
 
 def main():
-    exp_prefix = 'sql-reaching'
+    exp_prefix = 'sac-reaching'
     exp_name = format(timestamp())
     run_sac_experiment(
         run,
