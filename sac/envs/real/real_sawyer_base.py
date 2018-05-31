@@ -50,35 +50,27 @@ MAX_TORQUES = 0.5 * np.array([8, 12, 6, 5, 4, 3, 6]) # torque limits for each jo
 class SawyerEnv(Env):
     def __init__(self,
                  action_cost_coeff=1.0,
-                 joint_mask=None,
+                 joint_mask=(True, ) * 7,
                  reset_every_n=1,
                  include_xpos=False,
                  include_pose=False):
         super(SawyerEnv, self).__init__()
 
-        """Boolean mask indicating which joints should be controlled"""
-        if joint_mask is None:
-            joint_mask = [True, True, True, True, True, True, True]
-        self._joint_mask = joint_mask
-        
         self._action_cost_coeff = action_cost_coeff
 
-        """Actions are torques applied to each joint enabled in the joint mask"""
+        # Actions are torques applied to each joint enabled in the joint mask
         self._Da = sum(self._joint_mask) 
-        """Observations include joint angles and angular velocities for each joint"""
+        # Observations by default include joint angles and angular velocities for each joint
         self._Do = 2 * self._Da
 
-        """
-        If include_xpos is True, observations include the Cartesian coordinates of 
-        the end effector, right_hand
-        """
+        
+        # If include_xpos is True, observations include the Cartesian coordinates of 
+        # the end effector, right_hand
         if include_xpos:
             self._Do += 3
 
-        """
-        If include_pos is True, observaions include the orientation of the end effector
-        in Euler angles
-        """
+        # If include_pos is True, observations include the orientation of the end effector
+        # in Euler angles
         if include_pose:
             self._Do += 3
 
@@ -90,10 +82,13 @@ class SawyerEnv(Env):
 
     def initialize(self, use_remote_name=False):
         """
-        This function allows us to create instances of the env
+        Initializes interfaces with ROS and the robot.
+
+        This function is not included in constructor for the env
+        to allow us to create instances of the env
         without interfacing with ROS. This is used when
         remote envs need to access the environment (and actual
-        robot) to sample actions, while local processes also
+        robot) to sample actions, while local processes only 
         need the environment to access the env spec but do not 
         need to actually control the robot.
         :param use_remote_name: Should be True if being initialized in a remote environment
@@ -122,33 +117,35 @@ class SawyerEnv(Env):
     @overrides
     def observation_space(self):
 
-        lim = np.zeros(self._Do) * 1E6
+        lim = np.ones(self._Do) * 1E6
         return spaces.Box(-lim, lim)
     
-    """
-    Resets the environment and returns the new initial observation for the next rollout.
-    """
     @overrides
     def reset(self):
+        """
+        Resets the environment. 
+        :return: Initial observation for the next rollout
+        """
         if self._num_iter % self._reset_every_n == 0:
             self.reset_arm_to_neutral()
         self._num_iter += 1
-        time.sleep(1)
+        # sleeps for a second to allow the arm to come to rest 
+        # before actions are sent for the next episode
+        rospy.sleep(1.)
         return self.get_observation()
 
-    """
-    Executed at each time step, this sets the joint torques for the given action
-    and returns information dependent on the task. At each step, it should return
-    the next observation, the reward received, whether the episode has terminated, 
-    and an optionally a dictionary containing information about the environment for 
-    logging purposes.
-    """
     @overrides
     def step(self, action):
         """
-        If some joints are not enabled, we automatically set torques to
-        keep them at the angle specified in the NEUTRAL position.
+        This function is executed at each time step, this sets the joint torques
+        for the given action and returns information dependent on the task.
+        :param action: action to be executed this timestep
+        :return: tuple containing the next observation, reward received this step, boolean
+            indicating whether the episode has terminated early, and an optional dictionary
+            containing information about the environment for logging purposes
         """
+        # If some joints are not enabled, we automatically set torques to
+        # keep them at the angle specified in the NEUTRAL position.
         if not all(self._joint_mask):
             angle = self.get_joint_angles()
             action_all = self._get_pd_torques(angle - NEUTRAL)
@@ -164,25 +161,22 @@ class SawyerEnv(Env):
         return obs, reward, end_episode_immediately, env_info
 
 
-    """
-    Should contain task dependent logic for computing rewards, deciding whether any
-    termination conditions have been met, and any other information to be logged.
-
-    Should be overwritten by subclasses.
-    """
     def _compute_reward(self, obs, action):
+        """
+        This function should contain task dependent logic for computing rewards, 
+        deciding whether any termination conditions have been met, and any other 
+        information to be logged.
+
+        Should be overwritten by subclasses.
+        """
         end_episode_immediately = False
         reward = 0
-        env_info = dict(
-            actual_torques=self.get_joint_torques()
-        )
+        env_info = {actual_torques=self.get_joint_torques())}
         return reward, end_episode_immediately, env_info
 
 
-    """
-    Returns the Cartesian coordinates of hte end effector.
-    """
     def get_end_effector_pos(self):
+        """Returns the Cartesian coordinates of the end effector."""
         state_dict = self._arm.endpoint_pose()
         pos = state_dict['position']
         return np.array([
@@ -191,19 +185,15 @@ class SawyerEnv(Env):
             pos.z
         ])
 
-    """
-    Proportional-Derivative controller used to set joint angles to a given position.
-    """
     def _get_pd_torques(self, error, p_coeff=15, d_coeff=5):
+        """Proportional-Derivative controller used to move joint angles to a given position."""
         joint_velocities = self.get_joint_velocities()
 
         torques = - p_coeff*error - d_coeff*joint_velocities
         return torques
 
-    """
-    Uses the PD controller to move the arm into the NEUTRAL joint position.
-    """
     def reset_arm_to_neutral(self):
+        """Uses the PD controller to move the arm into the NEUTRAL joint position."""
         r = rospy.Rate(10)
         for i in range(100):
             joint_angles = self.get_joint_angles()
@@ -211,10 +201,8 @@ class SawyerEnv(Env):
             torques = self._get_pd_torques(error, 30, 5)
             self.set_joint_torques(torques)
 
-            """
-            Terminates the procedure once the arm is sufficiently close to the specified
-            joint angles 
-            """
+            # Terminates the procedure once the arm is sufficiently close to the specified
+            # joint angles 
             if sum(error ** 2) < 0.05:
                 break
             r.sleep()
@@ -252,29 +240,18 @@ class SawyerEnv(Env):
         return dict(zip(joint_names, values))
 
     def get_joint_angles(self):
-        """
-        Returns list of joint angles
-        """
         ja_dict = self._arm.joint_angles()
         return np.array([ja_dict[k] for k in sorted(ja_dict)])
 
     def get_joint_velocities(self):
-        """
-        Returns list of joint velocities
-        """
         jv_dict = self._arm.joint_velocities()
         return np.array([jv_dict[k] for k in sorted(jv_dict)])
 
     def get_joint_torques(self):
-        """
-        Returns list of joint torques.
-        """
         jt_dict = self._arm.joint_efforts()
         return np.array([jt_dict[k] for k in sorted(jt_dict)])
 
     def set_joint_torques(self, torques):
-        """
-        """
         if np.isnan(torques).any() or len(torques) != 7:
             return
 
@@ -285,12 +262,14 @@ class SawyerEnv(Env):
         self._arm.set_joint_torques(torques_dict)
 
 
-    """
-    Zeros out torques sent to the robot, allowing one to freely manipulate the arm by hand.
-    The arm should remain stationary while this is active, but in practice, gravity compensation
-    may cause the arm to rise gently instead.
-    """
     def float(self, time):
+        """
+        Zeros out torques sent to the robot, allowing one to freely manipulate the arm by hand.
+        The arm should remain stationary while this is active, but in practice, gravity compensation
+        may cause the arm to rise gently instead.
+        :param time: Number of seconds to float for
+        :return: None
+        """
         r = rospy.Rate(10)
         for i in range(int(time * 10)):
            torques = np.zeros(self._Da)
@@ -298,8 +277,8 @@ class SawyerEnv(Env):
            r.sleep()
 
 
-    """Uses intera's own controller to move joints to specified joint angles"""
     def set_joint_angles(self, joint_angles):
+        """Uses intera's own controller to move joints to specified joint angles."""
         angle_map = self.map_values_to_joints(joint_angles)
         self._arm.move_to_joint_positions(angle_map)
 

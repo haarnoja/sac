@@ -12,20 +12,19 @@ import rospy
 from intera_interface import CHECK_VERSION, limb, RobotEnable
 
 
-"""
-Environment for reaching either in joint space or Cartesian space.
-
-If target_type is 'joints', then the goal is to reach a specified joint angle.
-
-If target_type is 'cartesian', then the goal is to have the end effector reach
-    a certain position. 
-Cartesian reaching supports several loss types, including l2_distance, Huber 
-loss, and l2_distance_with_bonus. It also allows for a new target to be selected 
-randomly each episode if randomize_target is set to True. The target can be selected
-from a finite set of target locations or uniformly throughout a 3D box.
-"""
 class SawyerEnvReaching(SawyerEnv, Serializable):
+    """
+    Environment for reaching either in joint space or Cartesian space.
 
+    If target_type is 'joints', then the goal is to reach a specified joint angle.
+
+    If target_type is 'cartesian', then the goal is to have the end effector reach
+        a certain position. 
+    Cartesian reaching supports several loss types, including l2_distance, Huber 
+    loss, and l2_distance_with_bonus. It also allows for a new target to be selected 
+    randomly each episode if randomize_target is set to True. The target can be selected
+    from a finite set of target locations or uniformly throughout a 3D box.
+    """
     def __init__(self, target_pos=None, target_type='joints',
                  action_cost_coeff=1.0,
                  loss_type='l2',
@@ -53,7 +52,7 @@ class SawyerEnvReaching(SawyerEnv, Serializable):
         Currently only implemented for Cartesian reaching
         """
         if randomize_target:
-            assert(target_type == 'cartesian')
+            assert target_type == 'cartesian', target_type
             self._Do += 3
 
         self._loss_type = loss_type
@@ -115,14 +114,14 @@ class SawyerEnvReaching(SawyerEnv, Serializable):
         end_effector_pos = self.get_end_effector_pos()
         target_pos = self._target_pos
 
-        env_info = dict(
+        env_info = { 
             actual_torques=self.get_joint_torques(),
             action_cost=action_cost,
             pos_cost=pos_cost,
             distance_from_goal=distance_from_goal,
             end_effector_pos=end_effector_pos,
             target_pos=target_pos
-        )
+        }
 
         return reward, end_episode_immediately, env_info
 

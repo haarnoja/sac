@@ -61,12 +61,7 @@ def rollout(env, policy, path_length, render=False, speedup=None):
 
 
 def rollouts(env, policy, path_length, n_paths):
-    paths = list()
-    for i in range(n_paths):
-        paths.append(rollout(env, policy, path_length))
-
-    return paths
-
+    return [rollout(env, policy, path_length) for i in range(n_paths)]
 
 class Sampler(object):
     def __init__(self, max_path_length, min_pool_size, batch_size):
