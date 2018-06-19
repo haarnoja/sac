@@ -9,6 +9,7 @@ from sac.envs.real.real_sawyer_reaching import SawyerEnvReaching
 
 from sac.replay_buffers.simple_replay_buffer import SimpleReplayBuffer
 from sac.misc.remote_sampler import RemoteSampler
+from sac.misc.sampler import SimpleSampler
 from sac.misc.utils import timestamp
 from sac.policies.gmm import GMMPolicy
 from sac.misc.instrument import run_sac_experiment
@@ -51,28 +52,32 @@ def run(variant): # parameter is unused
         joint_mask=joint_mask,
         include_xpos=True,
         include_pose=False,
-        include_actual_torques=False,
-        loss_type='l2',
+        loss_type='l2_distance',
         loss_param=None,
         reset_every_n=1,
     )
 
-    env = normalize(
-        SawyerEnvReaching(**reaching_env_kwargs)
-    )
+    env = SawyerEnvReaching(**reaching_env_kwargs)
+    env.initialize()
+    env = normalize(env)
 
     pool = SimpleReplayBuffer(
         env_spec=env.spec,
         max_replay_buffer_size=1E6
     )
-
+    sampler = SimpleSampler(
+        max_path_length=150,
+        min_pool_size=150,
+        batch_size=256)
+    """
     sampler = RemoteSampler(
         max_path_length=150,
         min_pool_size=150,
         batch_size=256)
+    """
 
     base_kwargs = dict(
-        epoch_length=1000,
+        epoch_length=150,
         n_epochs=5000,
         n_train_repeat=1,
         eval_render=False,

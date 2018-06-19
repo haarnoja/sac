@@ -94,8 +94,7 @@ class RLAlgorithm(Algorithm):
                             batch=self._sampler.random_batch())
                     gt.stamp('train')
 
-                # TODO: no evaluations for now
-                # self._evaluate(policy, evaluation_env)
+                self._evaluate()
                 gt.stamp('eval')
 
                 params = self.get_snapshot(epoch)
@@ -120,13 +119,15 @@ class RLAlgorithm(Algorithm):
 
             self._sampler.terminate()
 
-    def _evaluate(self, epoch):
+    def _evaluate(self):
         """Perform evaluation for the current policy.
 
         :param epoch: The epoch number.
         :return: None
         """
 
+        batch = self._pool.random_batch(self._batch_size)
+        self.log_diagnostics(batch)
         if self._eval_n_episodes < 1:
             return
 
@@ -151,8 +152,6 @@ class RLAlgorithm(Algorithm):
         if self._eval_render:
             self._eval_env.render(paths)
 
-        batch = self._pool.random_batch(self._batch_size)
-        self.log_diagnostics(batch)
 
     @abc.abstractmethod
     def log_diagnostics(self, batch):

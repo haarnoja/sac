@@ -77,26 +77,25 @@ class SawyerEnvReaching(SawyerEnv, Serializable):
         if self._target_type == 'joints':
             actual = self.get_joint_angles()[-self.ADIM:]
             target = self._target_pos[-self.ADIM:]
-            pos_cost = sum((actual - target) ** 2)
+            pos_cost = np.sum((actual - target) ** 2)
 
         elif self._target_type == 'cartesian':
             actual = self.get_end_effector_pos()
+            squared_l2_dist = np.sum((self._target_pos - actual) ** 2)
+            l2_dist = np.sqrt(squared_l2_dist)
 
             if self._loss_type == 'l2_distance':
-                pos_cost = np.sqrt(sum((self._target_pos - actual) ** 2))
+                pos_cost = np.sqrt(squared_l2_dist)
 
             elif self._loss_type == 'huber':
                 """Computes the Huber loss"""
-                l2_dist = sum((self._target_pos - actual) ** 2)
                 delta = self._loss_param['delta']
-                if np.sqrt(l2_dist) < delta:
-                    pos_cost = 0.5 * l2_dist
+                if l2_dist < delta:
+                    pos_cost = 0.5 * squared_l2_dist
                 else:
-                    pos_cost = delta * (np.sqrt(l2_dist) - 0.5 * delta)
+                    pos_cost = delta * (l2_dist - 0.5 * delta)
 
             elif self._loss_type == 'l2_distance_with_bonus':
-                l2_dist = np.sqrt(sum((self._target_pos - actual) ** 2))
-
                 """Adds a flat bonus if within a certain distance of the target and terminates the episode"""
                 if l2_dist < self._loss_param['threshold']:
                     pos_cost = l2_dist - self._loss_param['bonus_reward']
@@ -108,19 +107,17 @@ class SawyerEnvReaching(SawyerEnv, Serializable):
         else:
             raise ValueError
 
-        action_cost = self._action_cost_coeff * sum(action ** 2)
+        action_cost = self._action_cost_coeff * np.sum(action ** 2)
         reward = -action_cost - pos_cost
-        distance_from_goal = np.sqrt(sum((self.get_end_effector_pos() - self._target_pos) ** 2))
         end_effector_pos = self.get_end_effector_pos()
         target_pos = self._target_pos
 
         env_info = { 
-            actual_torques=self.get_joint_torques(),
-            action_cost=action_cost,
-            pos_cost=pos_cost,
-            distance_from_goal=distance_from_goal,
-            end_effector_pos=end_effector_pos,
-            target_pos=target_pos
+                'action_cost': action_cost,
+                'pos_cost': pos_cost,
+                'distance_from_goal': l2_dist, 
+                'end_effector_pos': end_effector_pos,
+                'target_pos': target_pos
         }
 
         return reward, end_episode_immediately, env_info

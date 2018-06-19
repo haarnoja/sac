@@ -58,6 +58,9 @@ class SawyerEnv(Env):
 
         self._action_cost_coeff = action_cost_coeff
 
+        # Boolean mask indicating whether each joint will be controlled directly
+        self._joint_mask = joint_mask 
+
         # Actions are torques applied to each joint enabled in the joint mask
         self._Da = sum(self._joint_mask) 
         # Observations by default include joint angles and angular velocities for each joint
@@ -79,6 +82,7 @@ class SawyerEnv(Env):
 
         self._num_iter = 0
         self._reset_every_n = reset_every_n
+
 
     def initialize(self, use_remote_name=False):
         """
@@ -104,13 +108,12 @@ class SawyerEnv(Env):
             rs.enable()
         rospy.on_shutdown(self.clean_shutdown)
         self._arm = limb.Limb('right')
-        self._kinematics = sawyer_kinematics('right')
         self._rate = rospy.Rate(20)
 
     @cached_property
     @overrides
     def action_space(self):
-        masked_limits = self.MAX_TORQUES[self._joint_mask]
+        masked_limits = MAX_TORQUES[self._joint_mask]
         return spaces.Box(-masked_limits, masked_limits)
 
     @cached_property
@@ -127,7 +130,11 @@ class SawyerEnv(Env):
         :return: Initial observation for the next rollout
         """
         if self._num_iter % self._reset_every_n == 0:
-            self.reset_arm_to_neutral()
+            # don't use PD controller to reset in Gazebo, since the arm will continue to float afterwards
+            # self.reset_arm_to_neutral()
+
+            self.set_joint_angles(NEUTRAL)
+            
         self._num_iter += 1
         # sleeps for a second to allow the arm to come to rest 
         # before actions are sent for the next episode
@@ -171,7 +178,7 @@ class SawyerEnv(Env):
         """
         end_episode_immediately = False
         reward = 0
-        env_info = {actual_torques=self.get_joint_torques())}
+        env_info = {}
         return reward, end_episode_immediately, env_info
 
 
@@ -216,8 +223,6 @@ class SawyerEnv(Env):
             obs = np.concatenate([obs, self.get_end_effector_pos()])
         if self._include_pose:
             obs = np.concatenate([obs, self.compute_euler_angles()])
-        if self._include_actual_torques:
-            obs = np.concatenate([obs, self.get_joint_torques()])
         return obs
 
     def compute_euler_angles(self):
@@ -256,7 +261,7 @@ class SawyerEnv(Env):
             return
 
         torques = np.clip(np.asarray(torques),
-                          -self.MAX_TORQUES, self.MAX_TORQUES)
+                          -MAX_TORQUES, MAX_TORQUES)
 
         torques_dict = self.map_values_to_joints(torques)
         self._arm.set_joint_torques(torques_dict)
