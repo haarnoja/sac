@@ -54,7 +54,7 @@ export PYTHONPATH=$(pwd):${PYTHONPATH}
 ```
 
 2. [Download](https://www.roboti.us/index.html) and copy mujoco files to rllab path:
-If you're running on OSX, download https://www.roboti.us/download/mjpro131_osx.zip instead, and copy the `.dylib` files instead of `.so` files.
+  If you're running on OSX, download https://www.roboti.us/download/mjpro131_osx.zip instead, and copy the `.dylib` files instead of `.so` files.
 ```
 mkdir -p /tmp/mujoco_tmp && cd /tmp/mujoco_tmp
 wget -P . https://www.roboti.us/download/mjpro131_linux.zip
@@ -113,6 +113,35 @@ usage: mujoco_all_sac.py [-h]
                          [--exp_name EXP_NAME] [--mode MODE]
                          [--log_dir LOG_DIR]
 ```
+
+### Training over ROS (experimental)
+We can train physical robots over a ROS interface. In this example, we outline how to setup a simulated Sawyer robot and train a reaching policy by communicating through ROS. *NOTE*: This feature and the following instructions are experimental and only Python 2.7 is supported.
+
+*Installation*
+1. Install Intera Robot SDK (and all the dependencies):  [http://sdk.rethinkrobotics.com/intera/Workstation_Setup](http://sdk.rethinkrobotics.com/intera/Workstation_Setup).
+2. Install Gazebo robot simulator [http://sdk.rethinkrobotics.com/intera/Gazebo_Tutorial](http://sdk.rethinkrobotics.com/intera/Gazebo_Tutorial)
+3. Clone rllab [https://github.com/rll/rllab](https://github.com/rll/rllab). You might need to do tiny edits to the source to make it Python 2.7 compatible.
+
+*Running*
+1. Start a Gazebo simulation
+```
+cd ~/ros_ws
+./intera.sh sim
+roslaunch sawyer_gazebo sawyer_world.launch
+```
+2. In another terminal, first activate the ROS python environment, then the sac environment.
+```
+cd ~/ros_ws
+./intera.sh sim
+cd <path_to_sac>
+source activate sac
+```
+3. Execute the training script
+```
+python2 examples/sawyer_real_reaching_remote.py
+```
+This will launch two threads: one for training the networks, and the other one for executing the policy and receiving observations through the ROS interface. *NOTE* If you encounter missing package errors, make sure Python have a way to find `~/ros_ws/devel/lib/python2.7/dist-packages`, ROS Python package, and rllab.
+
 
 # Credits
 The soft actor-critic algorithm was developed by Tuomas Haarnoja under the supervision of Prof. [Sergey Levine](https://people.eecs.berkeley.edu/~svlevine/) and Prof. [Pieter Abbeel](https://people.eecs.berkeley.edu/~pabbeel/) at UC Berkeley. Special thanks to [Vitchyr Pong](https://github.com/vitchyr), who wrote some parts of the code, and [Kristian Hartikainen](https://github.com/hartikainen) who helped testing, documenting, and polishing the code and streamlining the installation process. The work was supported by [Berkeley Deep Drive](https://deepdrive.berkeley.edu/).
