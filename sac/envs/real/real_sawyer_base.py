@@ -1,11 +1,6 @@
 from __future__ import absolute_import
-import time
 import numpy as np
-import scipy
 import tf # ros transformations library
-import random
-import os
-import sys
 
 import rospy
 
@@ -14,8 +9,6 @@ from intera_interface import CHECK_VERSION, limb, RobotEnable
 from rllab import spaces
 from rllab.misc.overrides import overrides
 from cached_property import cached_property
-
-import config
 
 from rllab.envs.base import Env
 

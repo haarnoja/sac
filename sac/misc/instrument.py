@@ -52,5 +52,6 @@ def run_sac_experiment(main, mode, include_folders=None, log_dir=None,
         exp_prefix=exp_prefix,
         exp_name=exp_name,
         log_dir=log_dir,
+        python_command="python2",
         **kwargs
     )
