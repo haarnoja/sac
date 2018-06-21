@@ -7,6 +7,7 @@ import numpy as np
 from rllab.misc.overrides import overrides
 from rllab.misc import logger
 from rllab.misc.instrument import Serializable
+from rllab.envs.proxy_env import ProxyEnv
 
 from . import tf_utils
 from .sampler import Sampler, rollout
@@ -89,8 +90,12 @@ class _RemoteEnv(object):
         self._env = pickle.loads(env_pkl)
         self._policy = pickle.loads(policy_pkl)
 
-        if hasattr(self._env, 'initialize'):
-            self._env.initialize()
+        actual_env = self._env
+        while isinstance(actual_env, ProxyEnv):
+            actual_env = actual_env._wrapped_env
+
+        if hasattr(actual_env, 'initialize'):
+            actual_env.initialize()
 
     def rollout(self, policy_params, path_length):
         self._policy.set_param_values(policy_params)
