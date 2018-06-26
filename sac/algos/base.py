@@ -175,7 +175,7 @@ class RLAlgorithm(Algorithm):
         if self._eval_n_episodes > 0:
             # TODO: This is horrible. Don't do this. Get rid of this.
             import tensorflow as tf
-            with tf.variable_scope("low_level_policy", reuse=False):
+            with tf.variable_scope("low_level_policy", reuse=True):
                 self._eval_env = deep_clone(env)
         self._policy = policy
         self._pool = pool
