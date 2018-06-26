@@ -13,11 +13,11 @@ from rllab.misc.instrument import VariantGenerator
 
 from sac.algos import SAC
 from sac.envs import (
-    RandomGoalSwimmerEnv, RandomGoalAntEnv, RandomGoalHumanoidEnv,
-    HierarchyProxyEnv)
+    RandomGoalAntEnv, HierarchyProxyEnv)
 from sac.misc.instrument import run_sac_experiment
 from sac.misc.utils import timestamp
 from sac.policies import LatentSpacePolicy
+from sac.misc.sampler import SimpleSampler
 from sac.replay_buffers import SimpleReplayBuffer
 from sac.value_functions import NNQFunction, NNVFunction
 from sac.preprocessors import MLPPreprocessor
@@ -48,7 +48,7 @@ COMMON_PARAMS = {
     'policy_coupling_layers': 2,
     'policy_s_t_layers': 1,
     'policy_scale_regularization': 0.0,
-    'regularize_actions': True,
+    'action_prior': 'normal',
     'preprocessing_hidden_sizes': None,
     'preprocessing_output_nonlinearity': 'relu',
 
@@ -237,9 +237,7 @@ def load_low_level_policy(policy_path):
     return policy
 
 RANDOM_GOAL_ENVS = {
-    'swimmer': RandomGoalSwimmerEnv,
     'ant': RandomGoalAntEnv,
-    'humanoid': RandomGoalHumanoidEnv,
 }
 
 RLLAB_ENVS = {
@@ -268,34 +266,31 @@ def run_experiment(variant):
 
     base_env = normalize(EnvClass(**env_args))
     env = HierarchyProxyEnv(wrapped_env=base_env,
-                                low_level_policy=low_level_policy)
+                            low_level_policy=low_level_policy)
     pool = SimpleReplayBuffer(
         env_spec=env.spec,
         max_replay_buffer_size=variant['max_pool_size'],
     )
 
-    base_kwargs = dict(
+    sampler = SimpleSampler(
+        max_path_length=variant['max_path_length'],
         min_pool_size=variant['max_path_length'],
+        batch_size=variant['batch_size']
+    )
+
+    base_kwargs = dict(
         epoch_length=variant['epoch_length'],
         n_epochs=variant['n_epochs'],
-        max_path_length=variant['max_path_length'],
-        batch_size=variant['batch_size'],
         n_train_repeat=variant['n_train_repeat'],
         eval_render=False,
         eval_n_episodes=1,
         eval_deterministic=True,
+        sampler=sampler
     )
 
     M = variant['layer_size']
-    qf = NNQFunction(
-        env_spec=env.spec,
-        hidden_layer_sizes=[M, M],
-    )
-
-    vf = NNVFunction(
-        env_spec=env.spec,
-        hidden_layer_sizes=[M, M],
-    )
+    qf = NNQFunction(env_spec=env.spec, hidden_layer_sizes=(M, M))
+    vf = NNVFunction(env_spec=env.spec, hidden_layer_sizes=(M, M))
 
     preprocessing_hidden_sizes = variant.get('preprocessing_hidden_sizes')
     observations_preprocessor = (
@@ -322,6 +317,7 @@ def run_experiment(variant):
         mode="train",
         squash=False,
         bijector_config=bijector_config,
+        q_function=qf,
         fix_h_on_reset=variant.get('policy_fix_h_on_reset', False),
         observations_preprocessor=observations_preprocessor,
         name="high_level_policy"
@@ -340,7 +336,7 @@ def run_experiment(variant):
         discount=variant['discount'],
         tau=variant['tau'],
         target_update_interval=variant['target_update_interval'],
-        regularize_actions=variant['regularize_actions'],
+        action_prior=variant['action_prior'],
 
         save_full_state=False,
     )
