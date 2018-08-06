@@ -275,7 +275,7 @@ RUN_PARAMS_BASE = {
 }
 
 RUN_PARAMS = {
-    'swimmer': { # 2 DoF
+    'swimmer-rllab': { # 2 DoF
         'snapshot_gap': 200
     },
     'hopper': { # 3 DoF
@@ -290,9 +290,12 @@ RUN_PARAMS = {
     'ant': { # 8 DoF
         'snapshot_gap': 2000
     },
-    'humanoid': { # 21 DoF
+    'humanoid-gym': { # 21 DoF
         'snapshot_gap': 4000
-    }
+    },
+    'humanoid-rllab': { # 21 DoF
+        'snapshot_gap': 4000
+    },
 }
 
 
