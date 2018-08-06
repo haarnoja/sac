@@ -7,7 +7,7 @@ from sac.misc import tf_utils
 
 class NNVFunction(MLPFunction):
 
-    def __init__(self, env_spec, hidden_layer_sizes=(100, 100)):
+    def __init__(self, env_spec, hidden_layer_sizes=(100, 100), name='vf'):
         Serializable.quick_init(self, locals())
 
         self._Do = env_spec.observation_space.flat_dim
@@ -18,11 +18,11 @@ class NNVFunction(MLPFunction):
         )
 
         super(NNVFunction, self).__init__(
-            'vf', (self._obs_pl,), hidden_layer_sizes)
+            name, (self._obs_pl,), hidden_layer_sizes)
 
 
 class NNQFunction(MLPFunction):
-    def __init__(self, env_spec, hidden_layer_sizes=(100, 100)):
+    def __init__(self, env_spec, hidden_layer_sizes=(100, 100), name='qf'):
         Serializable.quick_init(self, locals())
 
         self._Da = env_spec.action_space.flat_dim
@@ -41,7 +41,8 @@ class NNQFunction(MLPFunction):
         )
 
         super(NNQFunction, self).__init__(
-            'qf', (self._obs_pl, self._action_pl), hidden_layer_sizes)
+            name, (self._obs_pl, self._action_pl), hidden_layer_sizes)
+
 
 class NNDiscriminatorFunction(MLPFunction):
     def __init__(self, env_spec, hidden_layer_sizes=(100, 100), num_skills=None):

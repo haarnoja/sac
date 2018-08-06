@@ -23,6 +23,7 @@ class RLAlgorithm(Algorithm):
             sampler,
             n_epochs=1000,
             n_train_repeat=1,
+            n_initial_exploration_steps=10000,
             epoch_length=1000,
             eval_n_episodes=10,
             eval_deterministic=True,
@@ -34,6 +35,8 @@ class RLAlgorithm(Algorithm):
             n_epochs (`int`): Number of epochs to run the training for.
             n_train_repeat (`int`): Number of times to repeat the training
                 for single time step.
+            n_initial_exploration_steps: Number of steps in the beginning to 
+                take using actions drawn from a separate exploration policy.
             epoch_length (`int`): Epoch length.
             eval_n_episodes (`int`): Number of rollouts to evaluate.
             eval_deterministic (`int`): Whether or not to run the policy in
@@ -46,6 +49,7 @@ class RLAlgorithm(Algorithm):
         self._n_epochs = n_epochs
         self._n_train_repeat = n_train_repeat
         self._epoch_length = epoch_length
+        self._n_initial_exploration_steps = n_initial_exploration_steps
         self._control_interval = control_interval
 
         self._eval_n_episodes = eval_n_episodes
@@ -58,17 +62,24 @@ class RLAlgorithm(Algorithm):
         self._policy = None
         self._pool = None
 
-    def _train(self, env, policy, pool):
+    def _train(self, env, policy, initial_exploration_policy, pool):
         """Perform RL training.
 
         Args:
             env (`rllab.Env`): Environment used for training
             policy (`Policy`): Policy used for training
+            initial_exploration_policy ('Policy'): Policy used for exploration
+                If None, then all exploration is done using policy
             pool (`PoolBase`): Sample pool to add samples to
         """
 
         self._init_training(env, policy, pool)
-        self.sampler.initialize(env, policy, pool)
+        if initial_exploration_policy is None:
+            self.sampler.initialize(env, policy, pool)
+            initial_exploration_done = True
+        else:
+            self.sampler.initialize(env, initial_exploration_policy, pool)
+            initial_exploration_done = False 
 
         with self._sess.as_default():
             gt.rename_root('RLAlgorithm')
@@ -81,6 +92,10 @@ class RLAlgorithm(Algorithm):
 
                 for t in range(self._epoch_length):
                     # TODO.codeconsolidation: Add control interval to sampler
+                    if not initial_exploration_done:
+                        if self._epoch_length * epoch >= self._n_initial_exploration_steps:
+                            self.sampler.set_policy(policy)
+                            initial_exploration_done = True
                     self.sampler.sample()
                     if not self.sampler.batch_ready():
                         continue

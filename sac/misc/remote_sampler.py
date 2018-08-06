@@ -9,6 +9,7 @@ from rllab.misc import logger
 from . import tf_utils
 from .sampler import Sampler, rollout
 
+# TODO: Make the remote sampler correctly use the initial exploration policy, as of now, using this will fail 
 
 class RemoteSampler(Sampler):
     def __init__(self, **kwargs):
