@@ -46,7 +46,7 @@ LSP_POLICY_PARAMS = {
         'preprocessing_hidden_sizes': (M, M, 34),
         's_t_units': 17,
     },
-    'humanoid-rllab': { # 21 DoF 
+    'humanoid-rllab': { # 21 DoF
         'preprocessing_hidden_sizes': (M, M, 42),
         's_t_units': 21,
     }
@@ -303,7 +303,7 @@ DOMAINS = [
     'walker', # 6 DoF
     'ant', # 8 DoF
     'humanoid-gym', # 17 DoF # gym_humanoid
-    'humanoid-rllab', # 21 DoF 
+    'humanoid-rllab', # 21 DoF
     'humanoid-standup-gym', # 17 DoF # gym_humanoid
 ]
 

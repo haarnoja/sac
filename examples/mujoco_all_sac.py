@@ -68,7 +68,7 @@ ENVIRONMENTS = {
     }
 }
 
-DEFAULT_DOMAIN = DEFAULT_ENV = 'swimmer'
+DEFAULT_DOMAIN = DEFAULT_ENV = 'swimmer-rllab'
 AVAILABLE_DOMAINS = set(ENVIRONMENTS.keys())
 AVAILABLE_TASKS = set(y for x in ENVIRONMENTS.values() for y in x.keys())
 
