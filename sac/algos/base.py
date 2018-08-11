@@ -46,7 +46,7 @@ class RLAlgorithm(Algorithm):
         """
         self.sampler = sampler
 
-        self._n_epochs = n_epochs
+        self._n_epochs = int(n_epochs)
         self._n_train_repeat = n_train_repeat
         self._epoch_length = epoch_length
         self._n_initial_exploration_steps = n_initial_exploration_steps

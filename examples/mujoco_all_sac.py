@@ -30,10 +30,6 @@ from sac.value_functions import NNQFunction, NNVFunction
 from sac.preprocessors import MLPPreprocessor
 from examples.variants import parse_domain_and_task, get_variants
 
-# remove these for published version
-config.DOCKER_IMAGE = "haarnoja/sac"  # needs psutils
-config.AWS_IMAGE_ID = "ami-a3a8b3da"  # with docker already pulled
-
 ENVIRONMENTS = {
     'swimmer-gym': {
         'default': lambda: GymEnv('Swimmer-v1'),
