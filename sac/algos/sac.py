@@ -9,8 +9,6 @@ from rllab.misc.overrides import overrides
 
 from .base import RLAlgorithm
 
-EPS = 1E-6
-
 
 class SAC(RLAlgorithm, Serializable):
     """Soft Actor-Critic (SAC)
@@ -78,7 +76,9 @@ class SAC(RLAlgorithm, Serializable):
 
             env,
             policy,
-            qf,
+            initial_exploration_policy,
+            qf1,
+            qf2,
             vf,
             pool,
             plotter=None,
@@ -89,6 +89,7 @@ class SAC(RLAlgorithm, Serializable):
             tau=0.01,
             target_update_interval=1,
             action_prior='uniform',
+            reparameterize=False,
 
             save_full_state=False,
     ):
@@ -99,17 +100,28 @@ class SAC(RLAlgorithm, Serializable):
 
             env (`rllab.Env`): rllab environment object.
             policy: (`rllab.NNPolicy`): A policy function approximator.
-            qf (`ValueFunction`): Q-function approximator.
+            initial_exploration_policy: ('Policy'): A policy that we use
+                for initial exploration which is not trained by the algorithm.
+
+            qf1 (`valuefunction`): First Q-function approximator.
+            qf2 (`valuefunction`): Second Q-function approximator. Usage of two
+                Q-functions improves performance by reducing overestimation
+                bias.
             vf (`ValueFunction`): Soft value function approximator.
+
             pool (`PoolBase`): Replay buffer to add gathered samples to.
             plotter (`QFPolicyPlotter`): Plotter instance to be used for
                 visualizing Q-function during training.
 
             lr (`float`): Learning rate used for the function approximators.
-            scale_reward (`float`): Scaling factor for raw reward.
             discount (`float`): Discount factor for Q-function updates.
             tau (`float`): Soft value function target update weight.
+            target_update_interval ('int'): Frequency at which target network
+                updates occur in iterations.
 
+            reparameterize ('bool'): If True, we use a gradient estimator for
+                the policy derived using the reparameterization trick. We use
+                a likelihood ratio based estimator otherwise.
             save_full_state (`bool`): If True, save the full class in the
                 snapshot. See `self.get_snapshot` for more information.
         """
@@ -119,7 +131,9 @@ class SAC(RLAlgorithm, Serializable):
 
         self._env = env
         self._policy = policy
-        self._qf = qf
+        self._initial_exploration_policy = initial_exploration_policy
+        self._qf1 = qf1
+        self._qf2 = qf2
         self._vf = vf
         self._pool = pool
         self._plotter = plotter
@@ -132,6 +146,11 @@ class SAC(RLAlgorithm, Serializable):
         self._tau = tau
         self._target_update_interval = target_update_interval
         self._action_prior = action_prior
+
+        # Reparameterize parameter must match between the algorithm and the
+        # policy actions are sampled from.
+        assert reparameterize == self._policy._reparameterize
+        self._reparameterize = reparameterize
 
         self._save_full_state = save_full_state
 
@@ -160,7 +179,7 @@ class SAC(RLAlgorithm, Serializable):
     def train(self):
         """Initiate training of the SAC instance."""
 
-        self._train(self._env, self._policy, self._pool)
+        self._train(self._env, self._policy, self._initial_exploration_policy, self._pool)
 
     def _init_placeholders(self):
         """Create input placeholders for the SAC algorithm.
@@ -225,7 +244,9 @@ class SAC(RLAlgorithm, Serializable):
         Q-function update rule.
         """
 
-        self._qf_t = self._qf.get_output_for(
+        self._qf1_t = self._qf1.get_output_for(
+            self._observations_ph, self._actions_ph, reuse=True)  # N
+        self._qf2_t = self._qf2.get_output_for(
             self._observations_ph, self._actions_ph, reuse=True)  # N
 
         with tf.variable_scope('target'):
@@ -237,14 +258,20 @@ class SAC(RLAlgorithm, Serializable):
             (1 - self._terminals_ph) * self._discount * vf_next_target_t
         )  # N
 
-        self._td_loss_t = 0.5 * tf.reduce_mean((ys - self._qf_t)**2)
+        self._td_loss1_t = 0.5 * tf.reduce_mean((ys - self._qf1_t)**2)
+        self._td_loss2_t = 0.5 * tf.reduce_mean((ys - self._qf2_t)**2)
 
-        qf_train_op = tf.train.AdamOptimizer(self._qf_lr).minimize(
-            loss=self._td_loss_t,
-            var_list=self._qf.get_params_internal()
+        qf1_train_op = tf.train.AdamOptimizer(self._qf_lr).minimize(
+            loss=self._td_loss1_t,
+            var_list=self._qf1.get_params_internal()
+        )
+        qf2_train_op = tf.train.AdamOptimizer(self._qf_lr).minimize(
+            loss=self._td_loss2_t,
+            var_list=self._qf2.get_params_internal()
         )
 
-        self._training_ops.append(qf_train_op)
+        self._training_ops.append(qf1_train_op)
+        self._training_ops.append(qf2_train_op)
 
     def _init_actor_update(self):
         """Create minimization operations for policy and state value functions.
@@ -276,11 +303,17 @@ class SAC(RLAlgorithm, Serializable):
         elif self._action_prior == 'uniform':
             policy_prior_log_probs = 0.0
 
-        log_target = self._qf.get_output_for(
+        log_target1 = self._qf1.get_output_for(
             self._observations_ph, actions, reuse=True)  # N
+        log_target2 = self._qf2.get_output_for(
+            self._observations_ph, actions, reuse=True)  # N
+        min_log_target = tf.minimum(log_target1, log_target2)
 
-        policy_kl_loss = tf.reduce_mean(log_pi * tf.stop_gradient(
-            log_pi - log_target + self._vf_t - policy_prior_log_probs))
+        if self._reparameterize:
+            policy_kl_loss = tf.reduce_mean(log_pi - log_target1)
+        else:
+            policy_kl_loss = tf.reduce_mean(log_pi * tf.stop_gradient(
+                log_pi - log_target1 + self._vf_t - policy_prior_log_probs))
 
         policy_regularization_losses = tf.get_collection(
             tf.GraphKeys.REGULARIZATION_LOSSES,
@@ -291,9 +324,11 @@ class SAC(RLAlgorithm, Serializable):
         policy_loss = (policy_kl_loss
                        + policy_regularization_loss)
 
+        # We update the vf towards the min of two Q-functions in order to
+        # reduce overestimation bias from function approximation error.
         self._vf_loss_t = 0.5 * tf.reduce_mean((
           self._vf_t
-          - tf.stop_gradient(log_target - log_pi + policy_prior_log_probs)
+          - tf.stop_gradient(min_log_target - log_pi + policy_prior_log_probs)
         )**2)
 
         policy_train_op = tf.train.AdamOptimizer(self._policy_lr).minimize(
@@ -364,14 +399,18 @@ class SAC(RLAlgorithm, Serializable):
         """
 
         feed_dict = self._get_feed_dict(iteration, batch)
-        qf, vf, td_loss = self._sess.run(
-            (self._qf_t, self._vf_t, self._td_loss_t), feed_dict)
+        qf1, qf2, vf, td_loss1, td_loss2 = self._sess.run(
+            (self._qf1_t, self._qf2_t, self._vf_t, self._td_loss1_t, self._td_loss2_t), feed_dict)
 
-        logger.record_tabular('qf-avg', np.mean(qf))
-        logger.record_tabular('qf-std', np.std(qf))
+        logger.record_tabular('qf1-avg', np.mean(qf1))
+        logger.record_tabular('qf1-std', np.std(qf1))
+        logger.record_tabular('qf2-avg', np.mean(qf1))
+        logger.record_tabular('qf2-std', np.std(qf1))
+        logger.record_tabular('mean-qf-diff', np.mean(np.abs(qf1-qf2)))
         logger.record_tabular('vf-avg', np.mean(vf))
         logger.record_tabular('vf-std', np.std(vf))
-        logger.record_tabular('mean-sq-bellman-error', td_loss)
+        logger.record_tabular('mean-sq-bellman-error1', td_loss1)
+        logger.record_tabular('mean-sq-bellman-error2', td_loss2)
 
         self._policy.log_diagnostics(iteration, batch)
         if self._plotter:
@@ -395,7 +434,8 @@ class SAC(RLAlgorithm, Serializable):
             snapshot = {
                 'epoch': epoch,
                 'policy': self._policy,
-                'qf': self._qf,
+                'qf1': self._qf1,
+                'qf2': self._qf2,
                 'vf': self._vf,
                 'env': self._env,
             }
@@ -407,7 +447,8 @@ class SAC(RLAlgorithm, Serializable):
 
         d = Serializable.__getstate__(self)
         d.update({
-            'qf-params': self._qf.get_param_values(),
+            'qf1-params': self._qf1.get_param_values(),
+            'qf2-params': self._qf2.get_param_values(),
             'vf-params': self._vf.get_param_values(),
             'policy-params': self._policy.get_param_values(),
             'pool': self._pool.__getstate__(),
@@ -419,7 +460,8 @@ class SAC(RLAlgorithm, Serializable):
         """Set Serializable state fo the RLAlgorithm instance."""
 
         Serializable.__setstate__(self, d)
-        self._qf.set_param_values(d['qf-params'])
+        self._qf1.set_param_values(d['qf1-params'])
+        self._qf2.set_param_values(d['qf2-params'])
         self._vf.set_param_values(d['vf-params'])
         self._policy.set_param_values(d['policy-params'])
         self._pool.__setstate__(d['pool'])

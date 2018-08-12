@@ -22,6 +22,7 @@ class LatentSpacePolicy(NNPolicy, Serializable):
                  mode="train",
                  squash=True,
                  bijector_config=None,
+                 reparameterize=False,
                  observations_preprocessor=None,
                  fix_h_on_reset=False,
                  q_function=None,
@@ -44,6 +45,7 @@ class LatentSpacePolicy(NNPolicy, Serializable):
         self._bijector_config = bijector_config
         self._mode = mode
         self._squash = squash
+        self._reparameterize = reparameterize
         self._fix_h_on_reset = fix_h_on_reset
         self._q_function = q_function
         self._n_map_action_candidates=n_map_action_candidates
@@ -82,7 +84,8 @@ class LatentSpacePolicy(NNPolicy, Serializable):
                 raw_actions = self.distribution.sample(
                     N, bijector_kwargs={"condition": conditions})
 
-            raw_actions = tf.stop_gradient(raw_actions)
+            if not self._reparameterize:
+                raw_actions = tf.stop_gradient(raw_actions)
 
         actions = tf.tanh(raw_actions) if self._squash else raw_actions
 

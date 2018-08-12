@@ -9,6 +9,7 @@ from sac.misc.plotter import QFPolicyPlotter
 from sac.misc.utils import timestamp
 from sac.policies import GMMPolicy, LatentSpacePolicy
 from sac.replay_buffers import SimpleReplayBuffer
+from sac.misc.sampler import SimpleSampler
 from sac.value_functions import NNQFunction, NNVFunction
 
 
@@ -20,17 +21,13 @@ def run(variant):
         init_sigma=0.1,
     ))
 
-    pool = SimpleReplayBuffer(
-        max_replay_buffer_size=1e6,
-        env_spec=env.spec,
-    )
-
+    pool = SimpleReplayBuffer(max_replay_buffer_size=1e6, env_spec=env.spec)
+    sampler = SimpleSampler(
+        max_path_length=30, min_pool_size=100, batch_size=64)
     base_kwargs = dict(
-        min_pool_size=30,
+        sampler=sampler,
         epoch_length=1000,
         n_epochs=1000,
-        max_path_length=30,
-        batch_size=64,
         n_train_repeat=1,
         eval_render=True,
         eval_n_episodes=10,
