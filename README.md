@@ -127,6 +127,9 @@ usage: mujoco_all_sac.py [-h]
                          [--log_dir LOG_DIR]
 ```
 
+# Benchmark Results
+Benchmark results for some of the OpenAI Gym v2 environments can be found [here](https://drive.google.com/open?id=1I0NUrAzU7wwJQiX_MSmr1LvshjDZ4gSh).
+
 # Credits
 The soft actor-critic algorithm was developed by Tuomas Haarnoja under the supervision of Prof. [Sergey Levine](https://people.eecs.berkeley.edu/~svlevine/) and Prof. [Pieter Abbeel](https://people.eecs.berkeley.edu/~pabbeel/) at UC Berkeley. Special thanks to [Vitchyr Pong](https://github.com/vitchyr), who wrote some parts of the code, and [Kristian Hartikainen](https://github.com/hartikainen) who helped testing, documenting, and polishing the code and streamlining the installation process. The work was supported by [Berkeley Deep Drive](https://deepdrive.berkeley.edu/).
 
